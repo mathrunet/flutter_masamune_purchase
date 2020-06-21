@@ -11,7 +11,8 @@ class PurchaseProduct extends Unit<ProductDetails> {
   final ProductType type;
 
   /// Callback for delivering billing items.
-  final Future Function(PurchaseDetails purchase, PurchaseProduct product)
+  final Future Function(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core)
       onDeliver;
 
   /// Get the protocol of the path.
@@ -41,7 +42,8 @@ class PurchaseProduct extends Unit<ProductDetails> {
   factory PurchaseProduct(
       {String id,
       ProductType type = ProductType.consumable,
-      Future onDeliver(PurchaseDetails purchase, PurchaseProduct product)}) {
+      Future onDeliver(PurchaseDetails purchase, PurchaseProduct product,
+          PurchaseCore core)}) {
     id = id?.applyTags();
     assert(isNotEmpty(id));
     assert(type != null);
@@ -54,8 +56,11 @@ class PurchaseProduct extends Unit<ProductDetails> {
     if (unit != null) return unit;
     return PurchaseProduct._(path, type, onDeliver);
   }
-  PurchaseProduct._(String path, ProductType type,
-      Future onDeliver(PurchaseDetails purchase, PurchaseProduct product))
+  PurchaseProduct._(
+      String path,
+      ProductType type,
+      Future onDeliver(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core))
       : this.type = type,
         this.onDeliver = onDeliver,
         super(path, isTemporary: false, group: 0, order: 10);

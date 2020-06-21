@@ -12,6 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   # in app purchase
+  simple_rsa: ^0.0.5
   in_app_purchase: ^0.3.4
   # Masamune
   masamune_core: ^0.2.3

@@ -6,11 +6,19 @@ part of masamune.purchase;
 ///
 /// Then purchasing item by executing [purchase()].
 class PurchaseCore extends TaskCollection<PurchaseProduct> {
-  final Future<bool> Function(PurchaseDetails purchase, PurchaseProduct product)
+  final Future<bool> Function(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core)
       _onVerify;
-  final Future Function(PurchaseDetails purchase, PurchaseProduct product)
+  final Future Function(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core)
       _onDeliver;
   final bool _autoConsumeOnAndroid;
+
+  /// Validation option for Android.
+  final AndroidVerifierOptions androidVerifierOptions;
+
+  /// Validation option for IOS.
+  final IOSVerifierOptions iosVerifierOptions;
 
   /// Create a Completer that matches the class.
   ///
@@ -67,13 +75,20 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   /// [onPrepare]: Callback before billing.
   /// [onVerify]: Callback for verification at the time of billing.
   /// [onDeliver]: Processing at the time of billing.
+  /// [timeout]: Timeout settings.
+  /// [androidVerifierOptions]:Validation option for Android.
+  /// [iosVerifierOptions]: Validation option for IOS.
   static Future<PurchaseCore> initialize(
       {Iterable<PurchaseProduct> products,
       Future<bool> onPrepare(),
-      Future<bool> onVerify(PurchaseDetails purchase, PurchaseProduct product),
-      Future onDeliver(PurchaseDetails purchase, PurchaseProduct product),
+      Future<bool> onVerify(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
+      Future onDeliver(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
       Duration timeout = Const.timeout,
-      bool autoConsumeOnAndroid = true}) {
+      bool autoConsumeOnAndroid = true,
+      AndroidVerifierOptions androidVerifierOptions,
+      IOSVerifierOptions iosVerifierOptions}) {
     assert(products != null && products.length > 0);
     if (products == null || products.length <= 0) {
       Log.error("The products is empty.");
@@ -89,7 +104,9 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         children: products,
         onDeliver: onDeliver,
         onVerify: onVerify,
-        autoConsumeOnAndroid: autoConsumeOnAndroid);
+        autoConsumeOnAndroid: autoConsumeOnAndroid,
+        androidVerifierOptions: androidVerifierOptions,
+        iosVerifierOptions: iosVerifierOptions);
     collection._initializeProcess(timeout: timeout, onPrepare: onPrepare);
     return collection.future;
   }
@@ -97,9 +114,13 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   PurchaseCore._(
       {String path,
       Iterable<PurchaseProduct> children,
-      Future<bool> onVerify(PurchaseDetails purchase, PurchaseProduct product),
-      Future onDeliver(PurchaseDetails purchase, PurchaseProduct product),
-      bool autoConsumeOnAndroid = true})
+      Future<bool> onVerify(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
+      Future onDeliver(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
+      bool autoConsumeOnAndroid = true,
+      this.androidVerifierOptions,
+      this.iosVerifierOptions})
       : this._onDeliver = onDeliver,
         this._onVerify = onVerify,
         this._autoConsumeOnAndroid = autoConsumeOnAndroid,
@@ -163,9 +184,9 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
                 return;
               } else if (purchase.status == PurchaseStatus.purchased) {
                 if (this._onVerify != null &&
-                    await this._onVerify(purchase, product)) {
+                    await this._onVerify(purchase, product, this)) {
                   if (this._onDeliver != null)
-                    await this._onDeliver(purchase, product);
+                    await this._onDeliver(purchase, product, this);
                 } else {
                   Log.error("The purchase failed.");
                   return;
@@ -204,9 +225,10 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         PurchaseProduct product = this.findByPurchase(purchase);
         if (product == null) continue;
         if (this._onVerify != null &&
-            !await this._onVerify(purchase, product).timeout(timeout)) continue;
+            !await this._onVerify(purchase, product, this).timeout(timeout))
+          continue;
         if (this._onDeliver != null)
-          await this._onDeliver(purchase, product).timeout(timeout);
+          await this._onDeliver(purchase, product, this).timeout(timeout);
       }
       _isInitialized = true;
       this.done();
