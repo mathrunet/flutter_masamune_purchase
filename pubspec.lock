@@ -107,6 +107,20 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "3.1.4"
+  in_app_purchase:
+    dependency: "direct main"
+    description:
+      name: in_app_purchase
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.3.4"
+  json_annotation:
+    dependency: transitive
+    description:
+      name: json_annotation
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "3.0.1"
   loading_animations:
     dependency: transitive
     description:
@@ -117,24 +131,24 @@ packages:
   masamune_core:
     dependency: "direct main"
     description:
-      path: "../masamune_core"
-      relative: true
-    source: path
-    version: "0.2.8"
+      name: masamune_core
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.2.11+1"
   masamune_flutter:
     dependency: "direct main"
     description:
-      path: "../masamune_flutter"
-      relative: true
-    source: path
-    version: "0.2.4+1"
+      name: masamune_flutter
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.2.10+3"
   masamune_localize:
     dependency: "direct main"
     description:
-      path: "../masamune_localize"
-      relative: true
-    source: path
-    version: "0.2.5+1"
+      name: masamune_localize
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.2.6"
   masamune_test:
     dependency: "direct dev"
     description:
@@ -197,7 +211,7 @@ packages:
       name: shared_preferences
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.5.7+3"
+    version: "0.5.6+3"
   shared_preferences_macos:
     dependency: transitive
     description:
@@ -279,7 +293,7 @@ packages:
       name: test_api
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.2.15"
+    version: "0.2.16"
   typed_data:
     dependency: transitive
     description:
@@ -330,5 +344,5 @@ packages:
     source: hosted
     version: "2.0.8"
 sdks:
-  dart: ">=2.6.0 <3.0.0"
+  dart: ">=2.7.0 <3.0.0"
   flutter: ">=1.12.13+hotfix.5 <2.0.0"

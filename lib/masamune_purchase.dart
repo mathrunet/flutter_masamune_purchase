@@ -3,12 +3,18 @@
 /// Masamune purchasing framework library.
 ///
 /// To use, import `package:masamune_purchase/masamune_purchase.dart`.
-/// 
+///
 /// [mathru.net]: https://mathru.net
 /// [YouTube]: https://www.youtube.com/c/mathrunetchannel
 library masamune.purchase;
+
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:masamune_core/masamune_core.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 export 'package:masamune_flutter/masamune_flutter.dart';
+
+part 'purchasecore.dart';
+part 'producttype.dart';
+part 'purchaseproduct.dart';
