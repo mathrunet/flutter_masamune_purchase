@@ -20,5 +20,6 @@ part 'purchasecore.dart';
 part 'producttype.dart';
 part 'purchaseproduct.dart';
 part 'androidverifieroptions.dart';
+part 'deliveroptions.dart';
 part 'iosverifieroptions.dart';
 part 'clientverifier.dart';

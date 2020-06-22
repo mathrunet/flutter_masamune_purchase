@@ -6,50 +6,6 @@ part of masamune.purchase;
 ///
 /// Then purchasing item by executing [purchase()].
 class ClientVerifier {
-  /// Get the Authorization Code for Google OAuth.
-  static Future getAuthorizationCode() async {
-    if (!Config.isAndroid) return;
-    PurchaseCore core = PurchaseCore();
-    if (core == null) return;
-    if (core.androidVerifierOptions == null ||
-        isEmpty(core.androidVerifierOptions.clientId)) return;
-    await openURL("https://accounts.google.com/o/oauth2/auth"
-        "?scope=https://www.googleapis.com/auth/androidpublisher"
-        "&response_type=code&access_type=offline"
-        "&redirect_uri=urn:ietf:wg:oauth:2.0:oob"
-        "&client_id=${core.androidVerifierOptions.clientId}");
-  }
-
-  /// Get Refresh Token for Google OAuth.
-  ///
-  /// Please get the authorization code first.
-  ///
-  /// [authorizationCode]: Authorization code.
-  static Future<String> getAndroidRefreshToken(String authorizationCode) async {
-    if (!Config.isAndroid) return null;
-    PurchaseCore core = PurchaseCore();
-    if (core == null) return null;
-    if (core.androidVerifierOptions == null ||
-        isEmpty(core.androidVerifierOptions.clientId) ||
-        isEmpty(core.androidVerifierOptions.clientSecret) ||
-        isEmpty(authorizationCode)) return null;
-    Response response =
-        await post("https://accounts.google.com/o/oauth2/token", headers: {
-      "content-type": "application/x-www-form-urlencoded"
-    }, body: {
-      "grant_type": "authorization_code",
-      "client_id": core.androidVerifierOptions.clientId,
-      "client_secret": core.androidVerifierOptions.clientSecret,
-      "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
-      "access_type": "offline",
-      "code": authorizationCode
-    });
-    if (response.statusCode != 200) return null;
-    Map<String, dynamic> map = Json.decodeAsMap(response.body);
-    if (map == null) return null;
-    return map["refresh_token"];
-  }
-
   /// [PurchaseCore] is used as a callback for [onVerify] of [PurchaseCore].
   ///
   /// The signature is verified and the receipt is verified locally.
@@ -61,7 +17,7 @@ class ClientVerifier {
       PurchaseCore core) async {
     if (Config.isAndroid) {
       if (core.androidVerifierOptions == null ||
-          isEmpty(core.androidVerifierOptions.refreshToken) ||
+          isEmpty(core.androidRefreshToken) ||
           isEmpty(core.androidVerifierOptions.clientId) ||
           isEmpty(core.androidVerifierOptions.clientSecret) ||
           isEmpty(core.androidVerifierOptions.publicKey)) return false;
@@ -76,7 +32,7 @@ class ClientVerifier {
         "grant_type": "refresh_token",
         "client_id": core.androidVerifierOptions.clientId,
         "client_secret": core.androidVerifierOptions.clientSecret,
-        "refresh_token": core.androidVerifierOptions.refreshToken
+        "refresh_token": core.androidRefreshToken
       });
       if (response.statusCode != 200) return false;
       Map<String, dynamic> map = Json.decodeAsMap(response.body);

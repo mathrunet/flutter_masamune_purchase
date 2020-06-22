@@ -10,6 +10,9 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// Product type.
   final ProductType type;
 
+  /// Product value.
+  final double value;
+
   /// Callback for delivering billing items.
   final Future Function(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core)
@@ -27,7 +30,7 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// [isTemporary]: True if the data is temporary.
   @override
   T createInstance<T extends IClonable>(String path, bool isTemporary) =>
-      PurchaseProduct._(path, this.type, this.onDeliver) as T;
+      PurchaseProduct._(path, this.type, this.value, this.onDeliver) as T;
 
   /// Define the billing item.
   ///
@@ -38,10 +41,12 @@ class PurchaseProduct extends Unit<ProductDetails> {
   ///
   /// [id]: Item ID.
   /// [type]: Item type.
+  /// [value]: Item value.
   /// [onDeliver]: Processing at the time of billing.
   factory PurchaseProduct(
       {String id,
       ProductType type = ProductType.consumable,
+      double value = 0,
       Future onDeliver(PurchaseDetails purchase, PurchaseProduct product,
           PurchaseCore core)}) {
     id = id?.applyTags();
@@ -54,15 +59,17 @@ class PurchaseProduct extends Unit<ProductDetails> {
     String path = "purchase://iap/$id";
     PurchaseProduct unit = PathMap.get<PurchaseProduct>(path);
     if (unit != null) return unit;
-    return PurchaseProduct._(path, type, onDeliver);
+    return PurchaseProduct._(path, type, value, onDeliver);
   }
   PurchaseProduct._(
       String path,
       ProductType type,
+      double value,
       Future onDeliver(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core))
       : this.type = type,
         this.onDeliver = onDeliver,
+        this.value = value,
         super(path, isTemporary: false, group: 0, order: 10);
   void _setInternal(ProductDetails details) {
     this.setInternal(details);

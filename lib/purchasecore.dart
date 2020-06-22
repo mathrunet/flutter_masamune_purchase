@@ -14,11 +14,18 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       _onDeliver;
   final bool _autoConsumeOnAndroid;
 
+  /// Refresh token for Android.
+  String get androidRefreshToken => this._androidRefreshToken;
+  String _androidRefreshToken;
+
   /// Validation option for Android.
   final AndroidVerifierOptions androidVerifierOptions;
 
   /// Validation option for IOS.
   final IOSVerifierOptions iosVerifierOptions;
+
+  /// Options for distributing billing items.
+  final DeliverOptions deliverOptions;
 
   /// Create a Completer that matches the class.
   ///
@@ -76,8 +83,10 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   /// [onVerify]: Callback for verification at the time of billing.
   /// [onDeliver]: Processing at the time of billing.
   /// [timeout]: Timeout settings.
-  /// [androidVerifierOptions]:Validation option for Android.
+  /// [androidRefreshToken]: Refresh Token for Android.
+  /// [androidVerifierOptions]: Validation option for Android.
   /// [iosVerifierOptions]: Validation option for IOS.
+  /// [deliverOptions]: Options for distributing billing items.
   static Future<PurchaseCore> initialize(
       {Iterable<PurchaseProduct> products,
       Future<bool> onPrepare(),
@@ -87,8 +96,10 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
       Duration timeout = Const.timeout,
       bool autoConsumeOnAndroid = true,
+      String androidRefreshToken,
       AndroidVerifierOptions androidVerifierOptions,
-      IOSVerifierOptions iosVerifierOptions}) {
+      IOSVerifierOptions iosVerifierOptions,
+      DeliverOptions deliverOptions}) {
     assert(products != null && products.length > 0);
     if (products == null || products.length <= 0) {
       Log.error("The products is empty.");
@@ -105,8 +116,10 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         onDeliver: onDeliver,
         onVerify: onVerify,
         autoConsumeOnAndroid: autoConsumeOnAndroid,
+        androidRefreshToken: androidRefreshToken,
         androidVerifierOptions: androidVerifierOptions,
-        iosVerifierOptions: iosVerifierOptions);
+        iosVerifierOptions: iosVerifierOptions,
+        deliverOptions: deliverOptions);
     collection._initializeProcess(timeout: timeout, onPrepare: onPrepare);
     return collection.future;
   }
@@ -119,10 +132,13 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       Future onDeliver(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
       bool autoConsumeOnAndroid = true,
+      String androidRefreshToken,
       this.androidVerifierOptions,
-      this.iosVerifierOptions})
+      this.iosVerifierOptions,
+      this.deliverOptions})
       : this._onDeliver = onDeliver,
         this._onVerify = onVerify,
+        this._androidRefreshToken = androidRefreshToken,
         this._autoConsumeOnAndroid = autoConsumeOnAndroid,
         super(
             path: path,
@@ -320,5 +336,49 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   void dispose() {
     if (this._stream != null) this._stream.cancel();
     super.dispose();
+  }
+
+  /// Get the Authorization Code for Google OAuth.
+  static Future getAuthorizationCode() async {
+    if (!Config.isAndroid) return;
+    PurchaseCore core = PurchaseCore();
+    if (core == null) return;
+    if (core.androidVerifierOptions == null ||
+        isEmpty(core.androidVerifierOptions.clientId)) return;
+    await openURL("https://accounts.google.com/o/oauth2/auth"
+        "?scope=https://www.googleapis.com/auth/androidpublisher"
+        "&response_type=code&access_type=offline"
+        "&redirect_uri=urn:ietf:wg:oauth:2.0:oob"
+        "&client_id=${core.androidVerifierOptions.clientId}");
+  }
+
+  /// Get Refresh Token for Google OAuth.
+  ///
+  /// Please get the authorization code first.
+  ///
+  /// [authorizationCode]: Authorization code.
+  static Future<String> getAndroidRefreshToken(String authorizationCode) async {
+    if (!Config.isAndroid) return null;
+    PurchaseCore core = PurchaseCore();
+    if (core == null) return null;
+    if (core.androidVerifierOptions == null ||
+        isEmpty(core.androidVerifierOptions.clientId) ||
+        isEmpty(core.androidVerifierOptions.clientSecret) ||
+        isEmpty(authorizationCode)) return null;
+    Response response =
+        await post("https://accounts.google.com/o/oauth2/token", headers: {
+      "content-type": "application/x-www-form-urlencoded"
+    }, body: {
+      "grant_type": "authorization_code",
+      "client_id": core.androidVerifierOptions.clientId,
+      "client_secret": core.androidVerifierOptions.clientSecret,
+      "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
+      "access_type": "offline",
+      "code": authorizationCode
+    });
+    if (response.statusCode != 200) return null;
+    Map<String, dynamic> map = Json.decodeAsMap(response.body);
+    if (map == null) return null;
+    return core._androidRefreshToken = map["refresh_token"];
   }
 }
