@@ -190,7 +190,6 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       }
       this._stream =
           _connection.purchaseUpdatedStream.listen((purchaseDetailsList) {
-        Log.msg("Purchase update.");
         try {
           purchaseDetailsList?.forEach((purchase) async {
             PurchaseProduct product = this.findByPurchase(purchase);
