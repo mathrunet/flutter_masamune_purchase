@@ -21,5 +21,8 @@ class AndroidVerifierOptions {
   /// [clientSecret]: Client secret.
   /// [verificationServer]: URL used for server verification.
   const AndroidVerifierOptions(
-      {this.clientId, this.publicKey, this.clientSecret, this.verificationServer});
+      {this.clientId,
+      this.publicKey,
+      this.clientSecret,
+      this.verificationServer});
 }
