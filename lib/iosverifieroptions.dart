@@ -5,8 +5,12 @@ class IOSVerifierOptions {
   /// Shared secret.
   final String sharedSecret;
 
+  /// URL used for server verification.
+  final String verificationServer;
+
   /// Validation option for IOS.
   ///
   /// [sharedSecret]: Shared secret.
-  const IOSVerifierOptions({this.sharedSecret});
+  /// [verificationServer]: URL used for server verification.
+  const IOSVerifierOptions({this.sharedSecret, this.verificationServer});
 }
