@@ -12,11 +12,15 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   final Future Function(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core)
       _onDeliver;
+  final Future Function(PurchaseCore core) _onCheckSubscription;
   final bool _autoConsumeOnAndroid;
 
   /// Refresh token for Android.
   String get androidRefreshToken => this._androidRefreshToken;
   String _androidRefreshToken;
+
+  /// Options for subscription.
+  final SubscribeOptions subscribeOptions;
 
   /// Validation option for Android.
   final AndroidVerifierOptions androidVerifierOptions;
@@ -82,6 +86,8 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   /// [onPrepare]: Callback before billing.
   /// [onVerify]: Callback for verification at the time of billing.
   /// [onDeliver]: Processing at the time of billing.
+  /// [onCheckSubscription]: Callback for initial check of subscription.
+  /// [subscribeOptions]: The subscribed options.
   /// [timeout]: Timeout settings.
   /// [androidRefreshToken]: Refresh Token for Android.
   /// [androidVerifierOptions]: Validation option for Android.
@@ -94,6 +100,8 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
       Future onDeliver(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
+      Future onCheckSubscription(PurchaseCore core),
+      SubscribeOptions subscribeOptions,
       Duration timeout = Const.timeout,
       bool autoConsumeOnAndroid = true,
       String androidRefreshToken,
@@ -115,6 +123,8 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         children: products,
         onDeliver: onDeliver,
         onVerify: onVerify,
+        subscribeOptions: subscribeOptions,
+        onCheckSubscription: onCheckSubscription,
         autoConsumeOnAndroid: autoConsumeOnAndroid,
         androidRefreshToken: androidRefreshToken,
         androidVerifierOptions: androidVerifierOptions,
@@ -131,13 +141,16 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
       Future onDeliver(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
+      Future onCheckSubscription(PurchaseCore core),
       bool autoConsumeOnAndroid = true,
       String androidRefreshToken,
+      this.subscribeOptions,
       this.androidVerifierOptions,
       this.iosVerifierOptions,
       this.deliverOptions})
       : this._onDeliver = onDeliver,
         this._onVerify = onVerify,
+        this._onCheckSubscription = onCheckSubscription,
         this._androidRefreshToken = androidRefreshToken,
         this._autoConsumeOnAndroid = autoConsumeOnAndroid,
         super(
@@ -244,6 +257,9 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
           continue;
         if (this._onDeliver != null)
           await this._onDeliver(purchase, product, this).timeout(timeout);
+      }
+      if (this.subscribeOptions != null && this._onCheckSubscription != null) {
+        await this._onCheckSubscription(this);
       }
       _isInitialized = true;
       this.done();
