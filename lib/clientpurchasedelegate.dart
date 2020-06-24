@@ -7,11 +7,13 @@ part of masamune.purchase;
 /// Then purchasing item by executing [purchase()].
 class ClientPurchaseDelegate {
   /// Get data for purchased subscriptions.
-  /// 
+  ///
   /// [purchase]: PurchaseDetails.
   /// [product]: The purchased product.
   /// [core]: Purchase Core instance.
-  static Future<Map<String,dynamic>> getSubscribedInfo(PurchaseDetails purchase, PurchaseProduct product,
+  static Future<Map<String, dynamic>> getSubscribedInfo(
+      PurchaseDetails purchase,
+      PurchaseProduct product,
       PurchaseCore core) async {
     if (Config.isAndroid) {
       if (core.androidVerifierOptions == null ||
@@ -19,8 +21,7 @@ class ClientPurchaseDelegate {
           isEmpty(core.androidVerifierOptions.clientId) ||
           isEmpty(core.androidVerifierOptions.clientSecret) ||
           isEmpty(core.androidVerifierOptions.publicKey)) return null;
-      if (
-          isEmpty(core.subscribeOptions.expiryDateKey) ||
+      if (isEmpty(core.subscribeOptions.expiryDateKey) ||
           isEmpty(core.subscribeOptions.tokenKey) ||
           isEmpty(core.subscribeOptions.orderIDKey) ||
           isEmpty(core.subscribeOptions.packageNameKey) ||
@@ -48,7 +49,7 @@ class ClientPurchaseDelegate {
       if (response.statusCode != 200) return null;
       map = Json.decodeAsMap(response.body);
       if (map == null) return null;
-      Map<String,dynamic> res = MapPool.get();
+      Map<String, dynamic> res = MapPool.get();
       for (MapEntry<String, dynamic> tmp in map.entries) {
         if (isEmpty(tmp.key) || tmp.value == null) continue;
         if (tmp.value is String) {
@@ -62,19 +63,79 @@ class ClientPurchaseDelegate {
         }
       }
       res[core.subscribeOptions.expiryDateKey] = map["expiryTimeMillis"];
-      res[core.subscribeOptions.tokenKey] = purchase.billingClientPurchase.purchaseToken;
+      res[core.subscribeOptions.tokenKey] =
+          purchase.billingClientPurchase.purchaseToken;
       res[core.subscribeOptions.productIDKey] = purchase.productID;
       res[core.subscribeOptions.orderIDKey] = map["orderId"];
-      res[core.subscribeOptions.packageNameKey] = purchase.billingClientPurchase.packageName;
+      res[core.subscribeOptions.packageNameKey] =
+          purchase.billingClientPurchase.packageName;
       return res;
-    } else if(Config.isIOS){
-
+    } else if (Config.isIOS) {
+      if (core.iosVerifierOptions == null ||
+          isEmpty(core.iosVerifierOptions.sharedSecret)) return null;
+      if (isEmpty(core.subscribeOptions.expiryDateKey) ||
+          isEmpty(core.subscribeOptions.tokenKey) ||
+          isEmpty(core.subscribeOptions.orderIDKey) ||
+          isEmpty(core.subscribeOptions.packageNameKey) ||
+          isEmpty(core.subscribeOptions.productIDKey)) return null;
+      Response response = await post(
+          "https://buy.itunes.apple.com/verifyReceipt",
+          headers: {
+            "content-type": "application/json",
+            "accept": "application/json"
+          },
+          body: Json.encode({
+            "receipt-data": purchase.verificationData.serverVerificationData,
+            "password": core.iosVerifierOptions.sharedSecret,
+          }));
+      if (response.statusCode != 200) return null;
+      Map<String, dynamic> map = Json.decodeAsMap(response.body);
+      if (map == null) return null;
+      int status = map["status"];
+      Log.msg(map);
+      if (status == 21007 || status == 21008) {
+        response = await post("https://sandbox.itunes.apple.com/verifyReceipt",
+            headers: {
+              "content-type": "application/json",
+              "accept": "application/json"
+            },
+            body: Json.encode({
+              "receipt-data": purchase.verificationData.serverVerificationData,
+              "password": core.iosVerifierOptions.sharedSecret,
+            }));
+        if (response.statusCode != 200) return null;
+        map = Json.decodeAsMap(response.body);
+        Log.msg(map);
+        if (map == null || map["status"] != 0) return null;
+      } else if (status != 0) {
+        return null;
+      }
+      Map<String, dynamic> res = MapPool.get();
+      for (MapEntry<String, dynamic> tmp in map["receipt"]["in_app"].entries) {
+        if (isEmpty(tmp.key) || tmp.value == null) continue;
+        if (tmp.value is String) {
+          int i = int.tryParse(tmp.value);
+          if (i == null)
+            res[tmp.key] = tmp.value;
+          else
+            res[tmp.key] = i;
+        } else {
+          res[tmp.key] = tmp.value;
+        }
+      }
+      res[core.subscribeOptions.expiryDateKey] = DateTime.parse( map["receipt"]["in_app"]["expires_date"] ).millisecondsSinceEpoch;
+      res[core.subscribeOptions.tokenKey] =
+          purchase.verificationData.serverVerificationData;
+      res[core.subscribeOptions.productIDKey] = purchase.productID;
+      res[core.subscribeOptions.orderIDKey] = map["receipt"]["in_app"]["transaction_id"];
+      res[core.subscribeOptions.packageNameKey] = map["receipt"]["bundle_id"];
+      return res;
     }
     return null;
   }
 
   /// Monitor subscription status, update, delete, etc.
-  /// 
+  ///
   /// [core]: PurchaseCore object.
   static Future checkSubscription(PurchaseCore core) async {
     if (Config.isAndroid) {
@@ -83,31 +144,36 @@ class ClientPurchaseDelegate {
           isEmpty(core.androidVerifierOptions.clientId) ||
           isEmpty(core.androidVerifierOptions.clientSecret) ||
           isEmpty(core.androidVerifierOptions.publicKey)) return;
-      if (
-          isEmpty(core.subscribeOptions.expiryDateKey) ||
-          isEmpty(core.subscribeOptions.tokenKey) ||
-          isEmpty(core.subscribeOptions.orderIDKey) ||
-          isEmpty(core.subscribeOptions.packageNameKey) ||
-          isEmpty(core.subscribeOptions.productIDKey)) return;
-          if( core.subscribeOptions.data == null && core.subscribeOptions.task == null) return;
-      IDataCollection data = core.subscribeOptions.data;
-      if( core.subscribeOptions.task != null ){
-        data = await core.subscribeOptions.task;
-      }
-      List<IDataDocument> updated = ListPool.get();
-      for (IDataDocument document in data) {
-        if (document == null ||
-            !document.containsKey(core.subscribeOptions.expiryDateKey) ||
-            !document.containsKey(core.subscribeOptions.tokenKey) ||
-            !document.containsKey(core.subscribeOptions.orderIDKey) ||
-            !document.containsKey(core.subscribeOptions.packageNameKey) ||
-            !document.containsKey(core.subscribeOptions.productIDKey)) continue;
-        int expiryDate = document.getInt(core.subscribeOptions.expiryDateKey);
-        if (expiryDate - DateTime.now().millisecondsSinceEpoch >
-            core.subscribeOptions.renewDuration.inMilliseconds) continue;
-        updated.add(document);
-      }
-      if (updated.length <= 0) return;
+    } else if(Config.isIOS){
+      if (core.iosVerifierOptions == null ||
+          isEmpty(core.iosVerifierOptions.sharedSecret)) return;
+    }
+    if (isEmpty(core.subscribeOptions.expiryDateKey) ||
+        isEmpty(core.subscribeOptions.tokenKey) ||
+        isEmpty(core.subscribeOptions.orderIDKey) ||
+        isEmpty(core.subscribeOptions.packageNameKey) ||
+        isEmpty(core.subscribeOptions.productIDKey)) return;
+    if (core.subscribeOptions.data == null &&
+        core.subscribeOptions.task == null) return;
+    IDataCollection data = core.subscribeOptions.data;
+    if (core.subscribeOptions.task != null) {
+      data = await core.subscribeOptions.task;
+    }
+    List<IDataDocument> updated = ListPool.get();
+    for (IDataDocument document in data) {
+      if (document == null ||
+          !document.containsKey(core.subscribeOptions.expiryDateKey) ||
+          !document.containsKey(core.subscribeOptions.tokenKey) ||
+          !document.containsKey(core.subscribeOptions.orderIDKey) ||
+          !document.containsKey(core.subscribeOptions.packageNameKey) ||
+          !document.containsKey(core.subscribeOptions.productIDKey)) continue;
+      int expiryDate = document.getInt(core.subscribeOptions.expiryDateKey);
+      if (expiryDate - DateTime.now().millisecondsSinceEpoch >
+          core.subscribeOptions.renewDuration.inMilliseconds) continue;
+      updated.add(document);
+    }
+    if (updated.length <= 0) return;
+    if(Config.isAndroid){
       Response response =
           await post("https://accounts.google.com/o/oauth2/token", headers: {
         "content-type": "application/x-www-form-urlencoded"
@@ -161,7 +227,18 @@ class ClientPurchaseDelegate {
           await document.save();
         }
       }
-    } else if (Config.isIOS) {}
+    } else if (Config.isIOS) {
+      for (IDataDocument document in updated) {
+        if (document == null) continue;
+        String token = document.getString(core.subscribeOptions.tokenKey);
+        String packageName =
+            document.getString(core.subscribeOptions.packageNameKey);
+        String productId =
+            document.getString(core.subscribeOptions.productIDKey);
+        if (isEmpty(token) || isEmpty(packageName) || isEmpty(productId))
+          continue;
+      }
+    }
   }
 
   /// [PurchaseCore] is used as a callback for [onVerify] of [PurchaseCore].
