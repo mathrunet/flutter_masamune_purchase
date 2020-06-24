@@ -249,6 +249,7 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         return;
       }
       for (PurchaseDetails purchase in purchaseResponse.pastPurchases) {
+        Log.msg(purchase.productID);
         if (purchase.status != PurchaseStatus.pending) continue;
         PurchaseProduct product = this.findByPurchase(purchase);
         if (product == null) continue;
@@ -257,6 +258,16 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
           continue;
         if (this._onDeliver != null)
           await this._onDeliver(purchase, product, this).timeout(timeout);
+        if (Config.isAndroid) {
+          if (!this._autoConsumeOnAndroid &&
+              product.type == ProductType.consumable) {
+            await _connection.consumePurchase(purchase);
+          }
+        }
+        if (purchase.pendingCompletePurchase) {
+          Log.msg("Purchase completed: ${purchase.productID}");
+          await _connection.completePurchase(purchase);
+        }
       }
       if (this.subscribeOptions != null && this._onCheckSubscription != null) {
         await this._onCheckSubscription(this);

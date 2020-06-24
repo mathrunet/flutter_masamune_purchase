@@ -87,6 +87,7 @@ class ClientPurchaseDelegate {
           body: Json.encode({
             "receipt-data": purchase.verificationData.serverVerificationData,
             "password": core.iosVerifierOptions.sharedSecret,
+            "exclude-old-transactions": true
           }));
       if (response.statusCode != 200) return null;
       Map<String, dynamic> map = Json.decodeAsMap(response.body);
@@ -102,6 +103,7 @@ class ClientPurchaseDelegate {
             body: Json.encode({
               "receipt-data": purchase.verificationData.serverVerificationData,
               "password": core.iosVerifierOptions.sharedSecret,
+              "exclude-old-transactions": true
             }));
         if (response.statusCode != 200) return null;
         map = Json.decodeAsMap(response.body);
@@ -111,7 +113,7 @@ class ClientPurchaseDelegate {
         return null;
       }
       Map<String, dynamic> res = MapPool.get();
-      for (MapEntry<String, dynamic> tmp in map["receipt"]["in_app"].entries) {
+      for (MapEntry<String, dynamic> tmp in map["latest_receipt_info"].first.entries) {
         if (isEmpty(tmp.key) || tmp.value == null) continue;
         if (tmp.value is String) {
           int i = int.tryParse(tmp.value);
@@ -123,11 +125,11 @@ class ClientPurchaseDelegate {
           res[tmp.key] = tmp.value;
         }
       }
-      res[core.subscribeOptions.expiryDateKey] = DateTime.parse( map["receipt"]["in_app"]["expires_date"] ).millisecondsSinceEpoch;
+      res[core.subscribeOptions.expiryDateKey] = map["latest_receipt_info"].first["expires_date_ms"];
       res[core.subscribeOptions.tokenKey] =
           purchase.verificationData.serverVerificationData;
       res[core.subscribeOptions.productIDKey] = purchase.productID;
-      res[core.subscribeOptions.orderIDKey] = map["receipt"]["in_app"]["transaction_id"];
+      res[core.subscribeOptions.orderIDKey] = map["latest_receipt_info"].first["transaction_id"];
       res[core.subscribeOptions.packageNameKey] = map["receipt"]["bundle_id"];
       return res;
     }
@@ -319,6 +321,7 @@ class ClientPurchaseDelegate {
           body: Json.encode({
             "receipt-data": purchase.verificationData.serverVerificationData,
             "password": core.iosVerifierOptions.sharedSecret,
+            "exclude-old-transactions": true
           }));
       if (response.statusCode != 200) return false;
       Map<String, dynamic> map = Json.decodeAsMap(response.body);
@@ -333,6 +336,7 @@ class ClientPurchaseDelegate {
             body: Json.encode({
               "receipt-data": purchase.verificationData.serverVerificationData,
               "password": core.iosVerifierOptions.sharedSecret,
+              "exclude-old-transactions": true
             }));
         if (response.statusCode != 200) return false;
         map = Json.decodeAsMap(response.body);
