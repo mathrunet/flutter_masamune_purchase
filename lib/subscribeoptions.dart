@@ -14,6 +14,9 @@ class SubscribeOptions {
   /// The time to start the update.
   final Duration renewDuration;
 
+  /// User ID key
+  final String userIDKey;
+
   /// Token key.
   final String tokenKey;
 
@@ -42,11 +45,13 @@ class SubscribeOptions {
   /// [packageNameKey]: Package name key.
   /// [productIDKey]: Product ID key.
   /// [orderIDKey]: Order ID key.
+  /// [userIDKey]: User ID key.
   /// [path]: Subscription collection path.
   /// [existOrderId]: Callback that returns True if the order id exists.
   const SubscribeOptions(
       {this.data,
       this.task,
+      this.userIDKey,
       this.existOrderId,
       this.expiryDateKey = "expiredTime",
       this.renewDuration = const Duration(hours: 2),

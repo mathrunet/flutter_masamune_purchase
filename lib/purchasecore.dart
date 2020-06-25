@@ -12,8 +12,17 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   final Future Function(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core)
       _onDeliver;
+  final Future Function(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core)
+      _onSubscribe;
+  final Future Function(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core)
+      _onUnlock;
   final Future Function(PurchaseCore core) _onCheckSubscription;
   final bool _autoConsumeOnAndroid;
+
+  /// User ID.
+  final String userId;
 
   /// Refresh token for Android.
   String get androidRefreshToken => this._androidRefreshToken;
@@ -86,9 +95,12 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   /// [onPrepare]: Callback before billing.
   /// [onVerify]: Callback for verification at the time of billing.
   /// [onDeliver]: Processing at the time of billing.
+  /// [onSubscribe]: Subscription start processing.
+  /// [onUnlock]: Purchase processing of non-consumable data.
   /// [onCheckSubscription]: Callback for initial check of subscription.
   /// [subscribeOptions]: The subscribed options.
   /// [timeout]: Timeout settings.
+  /// [userId]: User ID.
   /// [androidRefreshToken]: Refresh Token for Android.
   /// [androidVerifierOptions]: Validation option for Android.
   /// [iosVerifierOptions]: Validation option for IOS.
@@ -98,6 +110,10 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       Future<bool> onPrepare(),
       Future<bool> onVerify(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
+      Future onSubscribe(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
+      Future onUnlock(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
       Future onDeliver(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
       Future onCheckSubscription(PurchaseCore core),
@@ -105,6 +121,7 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       Duration timeout = Const.timeout,
       bool autoConsumeOnAndroid = true,
       String androidRefreshToken,
+      String userId,
       AndroidVerifierOptions androidVerifierOptions,
       IOSVerifierOptions iosVerifierOptions,
       DeliverOptions deliverOptions}) {
@@ -123,6 +140,7 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         children: products,
         onDeliver: onDeliver,
         onVerify: onVerify,
+        userId: userId,
         subscribeOptions: subscribeOptions,
         onCheckSubscription: onCheckSubscription,
         autoConsumeOnAndroid: autoConsumeOnAndroid,
@@ -141,15 +159,22 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
       Future onDeliver(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
+      Future onUnlock(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
+      Future onSubscribe(
+          PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
       Future onCheckSubscription(PurchaseCore core),
       bool autoConsumeOnAndroid = true,
       String androidRefreshToken,
+      this.userId,
       this.subscribeOptions,
       this.androidVerifierOptions,
       this.iosVerifierOptions,
       this.deliverOptions})
       : this._onDeliver = onDeliver,
         this._onVerify = onVerify,
+        this._onSubscribe = onSubscribe,
+        this._onUnlock = onUnlock,
         this._onCheckSubscription = onCheckSubscription,
         this._androidRefreshToken = androidRefreshToken,
         this._autoConsumeOnAndroid = autoConsumeOnAndroid,
@@ -213,8 +238,20 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
               } else if (purchase.status == PurchaseStatus.purchased) {
                 if (this._onVerify != null &&
                     await this._onVerify(purchase, product, this)) {
-                  if (this._onDeliver != null)
-                    await this._onDeliver(purchase, product, this);
+                  switch (product.type) {
+                    case ProductType.consumable:
+                      if (this._onDeliver != null)
+                        await this._onDeliver(purchase, product, this);
+                      break;
+                    case ProductType.nonConsumable:
+                      if (this._onUnlock != null)
+                        await this._onUnlock(purchase, product, this);
+                      break;
+                    case ProductType.subscription:
+                      if (this._onSubscribe != null)
+                        await this._onSubscribe(purchase, product, this);
+                      break;
+                  }
                 } else {
                   Log.error("The purchase failed.");
                   return;
@@ -250,23 +287,26 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       }
       for (PurchaseDetails purchase in purchaseResponse.pastPurchases) {
         Log.msg(purchase.productID);
-        if (purchase.status != PurchaseStatus.pending) continue;
-        PurchaseProduct product = this.findByPurchase(purchase);
-        if (product == null) continue;
-        if (this._onVerify != null &&
-            !await this._onVerify(purchase, product, this).timeout(timeout))
-          continue;
-        if (this._onDeliver != null)
-          await this._onDeliver(purchase, product, this).timeout(timeout);
-        if (Config.isAndroid) {
-          if (!this._autoConsumeOnAndroid &&
-              product.type == ProductType.consumable) {
-            await _connection.consumePurchase(purchase);
+        if (purchase.status == PurchaseStatus.pending) {
+          PurchaseProduct product = this.findByPurchase(purchase);
+          if (product == null) continue;
+          if (this._onVerify != null &&
+              !await this._onVerify(purchase, product, this).timeout(timeout))
+            continue;
+          switch (product.type) {
+            case ProductType.consumable:
+              if (this._onDeliver != null)
+                await this._onDeliver(purchase, product, this);
+              break;
+            case ProductType.nonConsumable:
+              if (this._onUnlock != null)
+                await this._onUnlock(purchase, product, this);
+              break;
+            case ProductType.subscription:
+              if (this._onSubscribe != null)
+                await this._onSubscribe(purchase, product, this);
+              break;
           }
-        }
-        if (purchase.pendingCompletePurchase) {
-          Log.msg("Purchase completed: ${purchase.productID}");
-          await _connection.completePurchase(purchase);
         }
       }
       if (this.subscribeOptions != null && this._onCheckSubscription != null) {

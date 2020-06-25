@@ -6,7 +6,7 @@ enum ProductType {
   consumable,
 
   /// Non-Consumable.
-  non_consumable,
+  nonConsumable,
 
   /// Subscription.
   subscription

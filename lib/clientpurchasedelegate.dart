@@ -1,4 +1,4 @@
-part of masamune.purchase;                                                                
+part of masamune.purchase;
 
 /// Class for managing billing process.
 ///
@@ -25,7 +25,8 @@ class ClientPurchaseDelegate {
           isEmpty(core.subscribeOptions.tokenKey) ||
           isEmpty(core.subscribeOptions.orderIDKey) ||
           isEmpty(core.subscribeOptions.packageNameKey) ||
-          isEmpty(core.subscribeOptions.productIDKey)) return null;
+          isEmpty(core.subscribeOptions.productIDKey) ||
+          isEmpty(core.subscribeOptions.userIDKey)) return null;
       Response response =
           await post("https://accounts.google.com/o/oauth2/token", headers: {
         "content-type": "application/x-www-form-urlencoded"
@@ -69,6 +70,8 @@ class ClientPurchaseDelegate {
       res[core.subscribeOptions.orderIDKey] = map["orderId"];
       res[core.subscribeOptions.packageNameKey] =
           purchase.billingClientPurchase.packageName;
+      if (isNotEmpty(core.userId))
+        res[core.subscribeOptions.userIDKey] = core.userId;
       return res;
     } else if (Config.isIOS) {
       if (core.iosVerifierOptions == null ||
@@ -77,7 +80,8 @@ class ClientPurchaseDelegate {
           isEmpty(core.subscribeOptions.tokenKey) ||
           isEmpty(core.subscribeOptions.orderIDKey) ||
           isEmpty(core.subscribeOptions.packageNameKey) ||
-          isEmpty(core.subscribeOptions.productIDKey)) return null;
+          isEmpty(core.subscribeOptions.productIDKey) ||
+          isEmpty(core.subscribeOptions.userIDKey)) return null;
       Response response = await post(
           "https://buy.itunes.apple.com/verifyReceipt",
           headers: {
@@ -138,6 +142,8 @@ class ClientPurchaseDelegate {
       res[core.subscribeOptions.orderIDKey] =
           map["latest_receipt_info"].first["transaction_id"];
       res[core.subscribeOptions.packageNameKey] = map["receipt"]["bundle_id"];
+      if (isNotEmpty(core.userId))
+        res[core.subscribeOptions.userIDKey] = core.userId;
       return res;
     }
     return null;
@@ -161,7 +167,8 @@ class ClientPurchaseDelegate {
         isEmpty(core.subscribeOptions.tokenKey) ||
         isEmpty(core.subscribeOptions.orderIDKey) ||
         isEmpty(core.subscribeOptions.packageNameKey) ||
-        isEmpty(core.subscribeOptions.productIDKey)) return;
+        isEmpty(core.subscribeOptions.productIDKey) ||
+        isEmpty(core.subscribeOptions.userIDKey)) return;
     if (core.subscribeOptions.data == null &&
         core.subscribeOptions.task == null) return;
     IDataCollection data = core.subscribeOptions.data;
@@ -240,12 +247,85 @@ class ClientPurchaseDelegate {
       for (IDataDocument document in updated) {
         if (document == null) continue;
         String token = document.getString(core.subscribeOptions.tokenKey);
-        String packageName =
-            document.getString(core.subscribeOptions.packageNameKey);
-        String productId =
-            document.getString(core.subscribeOptions.productIDKey);
-        if (isEmpty(token) || isEmpty(packageName) || isEmpty(productId))
-          continue;
+        if (isEmpty(token)) continue;
+        Response response = await post(
+            "https://buy.itunes.apple.com/verifyReceipt",
+            headers: {
+              "content-type": "application/json",
+              "accept": "application/json"
+            },
+            body: Json.encode({
+              "receipt-data": token,
+              "password": core.iosVerifierOptions.sharedSecret,
+              "exclude-old-transactions": true
+            }));
+        if (response.statusCode != 200) return null;
+        Map<String, dynamic> map = Json.decodeAsMap(response.body);
+        if (map == null) return null;
+        int status = map["status"];
+        if (status == 21007 || status == 21008) {
+          response = await post(
+              "https://sandbox.itunes.apple.com/verifyReceipt",
+              headers: {
+                "content-type": "application/json",
+                "accept": "application/json"
+              },
+              body: Json.encode({
+                "receipt-data": token,
+                "password": core.iosVerifierOptions.sharedSecret,
+                "exclude-old-transactions": true
+              }));
+          if (response.statusCode != 200) return null;
+          map = Json.decodeAsMap(response.body);
+          if (map == null || map["status"] != 0) return null;
+        }
+        int expiryTimeMillis =
+            map["latest_receipt_info"].first["expires_date_ms"];
+        String orderId = map["latest_receipt_info"].first["transaction_id"];
+        if (isNotEmpty(orderId) &&
+            (core.subscribeOptions.existOrderId == null ||
+                !await core.subscribeOptions.existOrderId(orderId))) {
+          for (MapEntry<String, dynamic> tmp
+              in map["latest_receipt_info"].first.entries) {
+            if (isEmpty(tmp.key) || tmp.value == null) continue;
+            if (tmp.value is String) {
+              int i = int.tryParse(tmp.value);
+              if (i == null)
+                document[tmp.key] = tmp.value;
+              else
+                document[tmp.key] = i;
+            } else {
+              document[tmp.key] = tmp.value;
+            }
+          }
+          Log.msg("update $orderId");
+          //await document.save();
+        } else if (map.containsKey("pending_renewal_info") &&
+            map["pending_renewal_info"].any((info) {
+              if (!info.containsKey("is_in_billing_retry_period")) return false;
+              return info["is_in_billing_retry_period"] == "1" ||
+                  info["is_in_billing_retry_period"] == 1;
+            })) {
+          document[core.subscribeOptions.expiryDateKey] = document.getInt(
+                  core.subscribeOptions.expiryDateKey,
+                  DateTime.now().millisecondsSinceEpoch) +
+              Duration(hours: 2).inMilliseconds;
+          Log.msg(
+              "updateTime $orderId ${document[core.subscribeOptions.expiryDateKey]}");
+          //await document.save();
+        } else if (map.containsKey("pending_renewal_info") &&
+            expiryTimeMillis < DateTime.now().millisecondsSinceEpoch &&
+            map["pending_renewal_info"].all((info) {
+              if (!info.containsKey("is_in_billing_retry_period") ||
+                  !info.containsKey("auto_renew_status")) return true;
+              return (info["is_in_billing_retry_period"] != "1" ||
+                      info["is_in_billing_retry_period"] != 1) &&
+                  (info["auto_renew_status"] != "1" ||
+                      info["auto_renew_status"] != 1);
+            })) {
+          Log.msg("delete $orderId");
+          //await document.delete();
+        }
       }
     }
   }
@@ -285,7 +365,7 @@ class ClientPurchaseDelegate {
       if (isEmpty(accessToken)) return false;
       switch (product.type) {
         case ProductType.consumable:
-        case ProductType.non_consumable:
+        case ProductType.nonConsumable:
           response = await get(
               "https://www.googleapis.com/androidpublisher/v3/applications/"
               "${purchase.billingClientPurchase.packageName}/purchases/products/"
@@ -306,7 +386,7 @@ class ClientPurchaseDelegate {
       map = Json.decodeAsMap(response.body);
       switch (product.type) {
         case ProductType.consumable:
-        case ProductType.non_consumable:
+        case ProductType.nonConsumable:
           if (map == null || map["purchaseState"] != 0) return false;
           break;
         case ProductType.subscription:
