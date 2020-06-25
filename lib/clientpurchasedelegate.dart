@@ -1,4 +1,4 @@
-part of masamune.purchase;
+part of masamune.purchase;                                                                
 
 /// Class for managing billing process.
 ///
@@ -93,7 +93,6 @@ class ClientPurchaseDelegate {
       Map<String, dynamic> map = Json.decodeAsMap(response.body);
       if (map == null) return null;
       int status = map["status"];
-      Log.msg(map);
       if (status == 21007 || status == 21008) {
         response = await post("https://sandbox.itunes.apple.com/verifyReceipt",
             headers: {
@@ -107,7 +106,6 @@ class ClientPurchaseDelegate {
             }));
         if (response.statusCode != 200) return null;
         map = Json.decodeAsMap(response.body);
-        Log.msg(map);
         if (map == null || map["status"] != 0) return null;
       } else if (status != 0) {
         return null;
