@@ -113,7 +113,10 @@ class ClientPurchaseDelegate {
         return null;
       }
       Map<String, dynamic> res = MapPool.get();
-      for (MapEntry<String, dynamic> tmp in map["latest_receipt_info"].first.entries) {
+      if (!map.containsKey("latest_receipt_info") ||
+          map["latest_receipt_info"]?.first == null) return null;
+      for (MapEntry<String, dynamic> tmp
+          in map["latest_receipt_info"].first.entries) {
         if (isEmpty(tmp.key) || tmp.value == null) continue;
         if (tmp.value is String) {
           int i = int.tryParse(tmp.value);
@@ -125,11 +128,17 @@ class ClientPurchaseDelegate {
           res[tmp.key] = tmp.value;
         }
       }
-      res[core.subscribeOptions.expiryDateKey] = map["latest_receipt_info"].first["expires_date_ms"];
+      if (!map["latest_receipt_info"].first.containsKey("expires_date_ms") ||
+          !map["latest_receipt_info"].first.containsKey("transaction_id") ||
+          !map.containsKey("receipt") ||
+          !map["receipt"].containsKey("bundle_id")) return null;
+      res[core.subscribeOptions.expiryDateKey] =
+          map["latest_receipt_info"].first["expires_date_ms"];
       res[core.subscribeOptions.tokenKey] =
           purchase.verificationData.serverVerificationData;
       res[core.subscribeOptions.productIDKey] = purchase.productID;
-      res[core.subscribeOptions.orderIDKey] = map["latest_receipt_info"].first["transaction_id"];
+      res[core.subscribeOptions.orderIDKey] =
+          map["latest_receipt_info"].first["transaction_id"];
       res[core.subscribeOptions.packageNameKey] = map["receipt"]["bundle_id"];
       return res;
     }
@@ -146,7 +155,7 @@ class ClientPurchaseDelegate {
           isEmpty(core.androidVerifierOptions.clientId) ||
           isEmpty(core.androidVerifierOptions.clientSecret) ||
           isEmpty(core.androidVerifierOptions.publicKey)) return;
-    } else if(Config.isIOS){
+    } else if (Config.isIOS) {
       if (core.iosVerifierOptions == null ||
           isEmpty(core.iosVerifierOptions.sharedSecret)) return;
     }
@@ -175,7 +184,7 @@ class ClientPurchaseDelegate {
       updated.add(document);
     }
     if (updated.length <= 0) return;
-    if(Config.isAndroid){
+    if (Config.isAndroid) {
       Response response =
           await post("https://accounts.google.com/o/oauth2/token", headers: {
         "content-type": "application/x-www-form-urlencoded"
