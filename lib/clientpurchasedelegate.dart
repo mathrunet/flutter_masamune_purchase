@@ -184,11 +184,12 @@ class ClientPurchaseDelegate {
           !document.containsKey(core.subscribeOptions.orderIDKey) ||
           !document.containsKey(core.subscribeOptions.packageNameKey) ||
           !document.containsKey(core.subscribeOptions.productIDKey)) continue;
-          if(document.getBool(core.subscribeOptions.expiredKey)) continue;
+      if (document.getBool(core.subscribeOptions.expiredKey)) continue;
       int expiryDate = document.getInt(core.subscribeOptions.expiryDateKey);
       if (expiryDate - DateTime.now().toUtc().millisecondsSinceEpoch >
           core.subscribeOptions.renewDuration.inMilliseconds) continue;
-      Log.msg("Updating subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
+      Log.msg(
+          "Updating subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
       updated.add(document);
     }
     if (updated.length <= 0) return;
@@ -227,9 +228,10 @@ class ClientPurchaseDelegate {
         int expiryTimeMillis = int.tryParse(map["expiryTimeMillis"]);
         String orderId = map["orderId"];
         if (expiryTimeMillis < DateTime.now().toUtc().millisecondsSinceEpoch) {
-              document[core.subscribeOptions.expiredKey] = true;
-              await document.save();
-      Log.msg("Expired subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
+          document[core.subscribeOptions.expiredKey] = true;
+          await document.save();
+          Log.msg(
+              "Expired subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
         } else if (isNotEmpty(orderId) &&
             (core.subscribeOptions.existOrderId == null ||
                 !await core.subscribeOptions.existOrderId(orderId))) {
@@ -246,7 +248,8 @@ class ClientPurchaseDelegate {
             }
           }
           await document.save();
-      Log.msg("Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
+          Log.msg(
+              "Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
         }
       }
     } else if (Config.isIOS) {
@@ -286,8 +289,8 @@ class ClientPurchaseDelegate {
           if (map == null || map["status"] != 0) return null;
         }
         int expiryTimeMillis =
-            int.tryParse( map["latest_receipt_info"].first["expires_date_ms"] );
-        if(expiryTimeMillis == null) continue;
+            int.tryParse(map["latest_receipt_info"].first["expires_date_ms"]);
+        if (expiryTimeMillis == null) continue;
         String orderId = map["latest_receipt_info"].first["transaction_id"];
         if (map.containsKey("pending_renewal_info") &&
             map["pending_renewal_info"].any((info) {
@@ -299,7 +302,8 @@ class ClientPurchaseDelegate {
                   DateTime.now().toUtc().millisecondsSinceEpoch) +
               Duration(hours: 2).inMilliseconds;
           await document.save();
-      Log.msg("Uenki subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
+          Log.msg(
+              "Postponing expiration of subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
         } else if (map.containsKey("pending_renewal_info") &&
             expiryTimeMillis < DateTime.now().toUtc().millisecondsSinceEpoch &&
             map["pending_renewal_info"].every((info) {
@@ -308,9 +312,10 @@ class ClientPurchaseDelegate {
               return info["is_in_billing_retry_period"] != "1" &&
                   info["auto_renew_status"] != "1";
             })) {
-              document[core.subscribeOptions.expiredKey] = true;
-              await document.save();
-      Log.msg("Expired subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
+          document[core.subscribeOptions.expiredKey] = true;
+          await document.save();
+          Log.msg(
+              "Expired subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
         } else if (isNotEmpty(orderId) &&
             (core.subscribeOptions.existOrderId == null ||
                 !await core.subscribeOptions.existOrderId(orderId))) {
@@ -328,8 +333,9 @@ class ClientPurchaseDelegate {
             }
           }
           await document.save();
-      Log.msg("Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
-                }
+          Log.msg(
+              "Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
+        }
       }
     }
   }
@@ -396,7 +402,9 @@ class ClientPurchaseDelegate {
         case ProductType.subscription:
           int startTimeMillis = int.tryParse(map["startTimeMillis"]);
           int expiryTimeMillis = int.tryParse(map["expiryTimeMillis"]);
-          if (map == null || startTimeMillis <= 0 || expiryTimeMillis <= DateTime.now().toUtc().millisecondsSinceEpoch)
+          if (map == null ||
+              startTimeMillis <= 0 ||
+              expiryTimeMillis <= DateTime.now().toUtc().millisecondsSinceEpoch)
             return false;
           break;
       }

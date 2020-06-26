@@ -35,7 +35,7 @@ class SubscribeOptions {
   /// Subscription collection path.
   final String path;
 
-  /// 
+  /// Expiration key.
   final String expiredKey;
 
   /// Options for subscription.
@@ -49,7 +49,7 @@ class SubscribeOptions {
   /// [productIDKey]: Product ID key.
   /// [orderIDKey]: Order ID key.
   /// [userIDKey]: User ID key.
-  /// [expiredKey]: Expired key.
+  /// [expiredKey]: Expiration key.
   /// [path]: Subscription collection path.
   /// [existOrderId]: Callback that returns True if the order id exists.
   const SubscribeOptions(

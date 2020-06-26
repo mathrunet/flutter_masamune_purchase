@@ -13,9 +13,9 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// Product value.
   final double value;
 
-  /// 課金を復元するためのコールバック。
-  /// 
-  /// 課金を復元する場合True。
+  /// Callback to restore billing.
+  ///
+  /// True to restore billing.
   final Future<bool> Function(PurchaseDetails purchase) isRestoreTransaction;
 
   /// Callback for delivering billing items.
@@ -35,7 +35,8 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// [isTemporary]: True if the data is temporary.
   @override
   T createInstance<T extends IClonable>(String path, bool isTemporary) =>
-      PurchaseProduct._(path, this.type, this.value, this.isRestoreTransaction, this.onDeliver) as T;
+      PurchaseProduct._(path, this.type, this.value, this.isRestoreTransaction,
+          this.onDeliver) as T;
 
   /// Define the billing item.
   ///
@@ -47,7 +48,7 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// [id]: Item ID.
   /// [type]: Item type.
   /// [value]: Item value.
-  /// [isRestoreTransaction]: 課金を復元するためのコールバック。
+  /// [isRestoreTransaction]: Callback to restore billing.
   /// [onDeliver]: Processing at the time of billing.
   factory PurchaseProduct(
       {String id,
@@ -66,7 +67,8 @@ class PurchaseProduct extends Unit<ProductDetails> {
     String path = "purchase://iap/$id";
     PurchaseProduct unit = PathMap.get<PurchaseProduct>(path);
     if (unit != null) return unit;
-    return PurchaseProduct._(path, type, value, isRestoreTransaction, onDeliver);
+    return PurchaseProduct._(
+        path, type, value, isRestoreTransaction, onDeliver);
   }
   PurchaseProduct._(
       String path,

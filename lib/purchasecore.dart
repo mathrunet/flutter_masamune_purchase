@@ -290,31 +290,34 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       for (PurchaseDetails purchase in purchaseResponse.pastPurchases) {
         PurchaseProduct product = this.findByPurchase(purchase);
         if (product == null) continue;
-          Log.msg(purchase.status);
-          if( purchase.status == PurchaseStatus.pending ||
-            product.type == ProductType.consumable || product.isRestoreTransaction == null || !await product.isRestoreTransaction(purchase)
-          ) continue;
-          Log.msg(purchase.status == PurchaseStatus.pending ||
-            product.type == ProductType.consumable || product.isRestoreTransaction == null || !await product.isRestoreTransaction(purchase));
-          Log.msg("Restore transaction: ${purchase.productID}");
+        Log.msg(purchase.status);
+        if (purchase.status == PurchaseStatus.pending ||
+            product.type == ProductType.consumable ||
+            product.isRestoreTransaction == null ||
+            !await product.isRestoreTransaction(purchase)) continue;
+        Log.msg(purchase.status == PurchaseStatus.pending ||
+            product.type == ProductType.consumable ||
+            product.isRestoreTransaction == null ||
+            !await product.isRestoreTransaction(purchase));
+        Log.msg("Restore transaction: ${purchase.productID}");
+        continue;
+        if (this._onVerify != null &&
+            !await this._onVerify(purchase, product, this).timeout(timeout))
           continue;
-          if (this._onVerify != null &&
-              !await this._onVerify(purchase, product, this).timeout(timeout))
-            continue;
-          switch (product.type) {
-            case ProductType.consumable:
-              if (this._onDeliver != null)
-                await this._onDeliver(purchase, product, this);
-              break;
-            case ProductType.nonConsumable:
-              if (this._onUnlock != null)
-                await this._onUnlock(purchase, product, this);
-              break;
-            case ProductType.subscription:
-              if (this._onSubscribe != null)
-                await this._onSubscribe(purchase, product, this);
-              break;
-          }
+        switch (product.type) {
+          case ProductType.consumable:
+            if (this._onDeliver != null)
+              await this._onDeliver(purchase, product, this);
+            break;
+          case ProductType.nonConsumable:
+            if (this._onUnlock != null)
+              await this._onUnlock(purchase, product, this);
+            break;
+          case ProductType.subscription:
+            if (this._onSubscribe != null)
+              await this._onSubscribe(purchase, product, this);
+            break;
+        }
       }
       if (this.subscribeOptions != null && this._onCheckSubscription != null) {
         await this._onCheckSubscription(this);
