@@ -295,10 +295,9 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
             product.isRestoreTransaction == null ||
             !await product.isRestoreTransaction(
                 purchase,
-                (document) =>
-                    !document.getBool(this.subscribeOptions.expiredKey) &&
-                    document.getString(this.subscribeOptions.productIDKey) ==
+                (document) => document.getString(this.subscribeOptions.productIDKey) ==
                         purchase.productID)) continue;
+        Log.msg("Restore transaction: ${purchase.productID}");
         if (this._onVerify != null &&
             !await this._onVerify(purchase, product, this).timeout(timeout))
           continue;
@@ -316,6 +315,7 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
               await this._onSubscribe(purchase, product, this);
             break;
         }
+        Log.msg("Restored transaction: ${purchase.productID}");
       }
       if (this.subscribeOptions != null && this._onCheckSubscription != null) {
         await this._onCheckSubscription(this);
