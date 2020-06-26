@@ -290,17 +290,15 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       for (PurchaseDetails purchase in purchaseResponse.pastPurchases) {
         PurchaseProduct product = this.findByPurchase(purchase);
         if (product == null) continue;
-        Log.msg(purchase.status);
         if (purchase.status == PurchaseStatus.pending ||
             product.type == ProductType.consumable ||
             product.isRestoreTransaction == null ||
-            !await product.isRestoreTransaction(purchase)) continue;
-        Log.msg(purchase.status == PurchaseStatus.pending ||
-            product.type == ProductType.consumable ||
-            product.isRestoreTransaction == null ||
-            !await product.isRestoreTransaction(purchase));
-        Log.msg("Restore transaction: ${purchase.productID}");
-        continue;
+            !await product.isRestoreTransaction(
+                purchase,
+                (document) =>
+                    !document.getBool(this.subscribeOptions.expiredKey) &&
+                    document.getString(this.subscribeOptions.productIDKey) ==
+                        purchase.productID)) continue;
         if (this._onVerify != null &&
             !await this._onVerify(purchase, product, this).timeout(timeout))
           continue;

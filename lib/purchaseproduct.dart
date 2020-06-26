@@ -16,7 +16,11 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// Callback to restore billing.
   ///
   /// True to restore billing.
-  final Future<bool> Function(PurchaseDetails purchase) isRestoreTransaction;
+  ///
+  /// [subscriptionChecker] stores the callback that checks by passing the document for subscription.
+  final Future<bool> Function(PurchaseDetails purchase,
+          bool Function(IDataDocument document) subscriptionChecker)
+      isRestoreTransaction;
 
   /// Callback for delivering billing items.
   final Future Function(
@@ -54,7 +58,8 @@ class PurchaseProduct extends Unit<ProductDetails> {
       {String id,
       ProductType type = ProductType.consumable,
       double value = 0,
-      Future<bool> isRestoreTransaction(PurchaseDetails purchase),
+      Future<bool> isRestoreTransaction(PurchaseDetails purchase,
+          bool Function(IDataDocument document) subscriptionChecker),
       Future onDeliver(PurchaseDetails purchase, PurchaseProduct product,
           PurchaseCore core)}) {
     id = id?.applyTags();
@@ -74,7 +79,8 @@ class PurchaseProduct extends Unit<ProductDetails> {
       String path,
       ProductType type,
       double value,
-      Future<bool> isRestoreTransaction(PurchaseDetails purchase),
+      Future<bool> isRestoreTransaction(PurchaseDetails purchase,
+          bool Function(IDataDocument document) subscriptionChecker),
       Future onDeliver(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core))
       : this.type = type,
