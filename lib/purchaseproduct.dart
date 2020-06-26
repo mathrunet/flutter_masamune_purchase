@@ -13,6 +13,11 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// Product value.
   final double value;
 
+  /// 課金を復元するためのコールバック。
+  /// 
+  /// 課金を復元する場合True。
+  final Future<bool> Function(PurchaseDetails purchase) isRestoreTransaction;
+
   /// Callback for delivering billing items.
   final Future Function(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core)
@@ -30,7 +35,7 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// [isTemporary]: True if the data is temporary.
   @override
   T createInstance<T extends IClonable>(String path, bool isTemporary) =>
-      PurchaseProduct._(path, this.type, this.value, this.onDeliver) as T;
+      PurchaseProduct._(path, this.type, this.value, this.isRestoreTransaction, this.onDeliver) as T;
 
   /// Define the billing item.
   ///
@@ -42,11 +47,13 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// [id]: Item ID.
   /// [type]: Item type.
   /// [value]: Item value.
+  /// [isRestoreTransaction]: 課金を復元するためのコールバック。
   /// [onDeliver]: Processing at the time of billing.
   factory PurchaseProduct(
       {String id,
       ProductType type = ProductType.consumable,
       double value = 0,
+      Future<bool> isRestoreTransaction(PurchaseDetails purchase),
       Future onDeliver(PurchaseDetails purchase, PurchaseProduct product,
           PurchaseCore core)}) {
     id = id?.applyTags();
@@ -59,15 +66,17 @@ class PurchaseProduct extends Unit<ProductDetails> {
     String path = "purchase://iap/$id";
     PurchaseProduct unit = PathMap.get<PurchaseProduct>(path);
     if (unit != null) return unit;
-    return PurchaseProduct._(path, type, value, onDeliver);
+    return PurchaseProduct._(path, type, value, isRestoreTransaction, onDeliver);
   }
   PurchaseProduct._(
       String path,
       ProductType type,
       double value,
+      Future<bool> isRestoreTransaction(PurchaseDetails purchase),
       Future onDeliver(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core))
       : this.type = type,
+        this.isRestoreTransaction = isRestoreTransaction,
         this.onDeliver = onDeliver,
         this.value = value,
         super(path, isTemporary: false, group: 0, order: 10);

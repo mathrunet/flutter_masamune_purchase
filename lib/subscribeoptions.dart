@@ -35,6 +35,9 @@ class SubscribeOptions {
   /// Subscription collection path.
   final String path;
 
+  /// 
+  final String expiredKey;
+
   /// Options for subscription.
   ///
   /// [data]: Collection that stores log data for subscriptions.
@@ -46,16 +49,18 @@ class SubscribeOptions {
   /// [productIDKey]: Product ID key.
   /// [orderIDKey]: Order ID key.
   /// [userIDKey]: User ID key.
+  /// [expiredKey]: Expired key.
   /// [path]: Subscription collection path.
   /// [existOrderId]: Callback that returns True if the order id exists.
   const SubscribeOptions(
       {this.data,
       this.task,
-      this.userIDKey,
       this.existOrderId,
+      this.userIDKey = "user",
       this.expiryDateKey = "expiredTime",
       this.renewDuration = const Duration(hours: 2),
       this.tokenKey = "token",
+      this.expiredKey = "expired",
       this.productIDKey = "productId",
       this.packageNameKey = "packageName",
       this.orderIDKey = "orderId",

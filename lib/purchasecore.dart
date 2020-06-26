@@ -140,6 +140,8 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         children: products,
         onDeliver: onDeliver,
         onVerify: onVerify,
+        onSubscribe: onSubscribe,
+        onUnlock: onUnlock,
         userId: userId,
         subscribeOptions: subscribeOptions,
         onCheckSubscription: onCheckSubscription,
@@ -286,10 +288,16 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         return;
       }
       for (PurchaseDetails purchase in purchaseResponse.pastPurchases) {
-        Log.msg(purchase.productID);
-        if (purchase.status == PurchaseStatus.pending) {
-          PurchaseProduct product = this.findByPurchase(purchase);
-          if (product == null) continue;
+        PurchaseProduct product = this.findByPurchase(purchase);
+        if (product == null) continue;
+          Log.msg(purchase.status);
+          if( purchase.status == PurchaseStatus.pending ||
+            product.type == ProductType.consumable || product.isRestoreTransaction == null || !await product.isRestoreTransaction(purchase)
+          ) continue;
+          Log.msg(purchase.status == PurchaseStatus.pending ||
+            product.type == ProductType.consumable || product.isRestoreTransaction == null || !await product.isRestoreTransaction(purchase));
+          Log.msg("Restore transaction: ${purchase.productID}");
+          continue;
           if (this._onVerify != null &&
               !await this._onVerify(purchase, product, this).timeout(timeout))
             continue;
@@ -307,7 +315,6 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
                 await this._onSubscribe(purchase, product, this);
               break;
           }
-        }
       }
       if (this.subscribeOptions != null && this._onCheckSubscription != null) {
         await this._onCheckSubscription(this);
