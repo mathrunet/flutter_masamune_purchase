@@ -320,6 +320,15 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       if (this.subscribeOptions != null && this._onCheckSubscription != null) {
         await this._onCheckSubscription(this);
       }
+      if( Config.isIOS ){
+        SKPaymentQueueWrapper paymentWrapper = SKPaymentQueueWrapper();
+        List<SKPaymentTransactionWrapper> transactions = await paymentWrapper.transactions();
+        for( SKPaymentTransactionWrapper transaction  in transactions ){
+          try {
+            await paymentWrapper.finishTransaction(transaction);
+          } catch(e) {}
+        }
+      }
       _isInitialized = true;
       this.done();
     } on TimeoutException catch (e) {
