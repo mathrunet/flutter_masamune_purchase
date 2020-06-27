@@ -12,6 +12,9 @@ class PurchaseProduct extends Unit<ProductDetails> {
 
   /// Product value.
   final double value;
+  
+  /// Target path.
+  final String targetPath;
 
   /// Callback to restore billing.
   ///
@@ -39,7 +42,7 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// [isTemporary]: True if the data is temporary.
   @override
   T createInstance<T extends IClonable>(String path, bool isTemporary) =>
-      PurchaseProduct._(path, this.type, this.value, this.isRestoreTransaction,
+      PurchaseProduct._(path, this.type, this.value, this.targetPath, this.isRestoreTransaction,
           this.onDeliver) as T;
 
   /// Define the billing item.
@@ -52,12 +55,14 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// [id]: Item ID.
   /// [type]: Item type.
   /// [value]: Item value.
+  /// [targetPath]: Target path.
   /// [isRestoreTransaction]: Callback to restore billing.
   /// [onDeliver]: Processing at the time of billing.
   factory PurchaseProduct(
       {String id,
       ProductType type = ProductType.consumable,
       double value = 0,
+      String targetPath,
       Future<bool> isRestoreTransaction(PurchaseDetails purchase,
           bool Function(IDataDocument document) subscriptionChecker),
       Future onDeliver(PurchaseDetails purchase, PurchaseProduct product,
@@ -73,12 +78,13 @@ class PurchaseProduct extends Unit<ProductDetails> {
     PurchaseProduct unit = PathMap.get<PurchaseProduct>(path);
     if (unit != null) return unit;
     return PurchaseProduct._(
-        path, type, value, isRestoreTransaction, onDeliver);
+        path, type, value, targetPath, isRestoreTransaction, onDeliver);
   }
   PurchaseProduct._(
       String path,
       ProductType type,
       double value,
+      String targetPath,
       Future<bool> isRestoreTransaction(PurchaseDetails purchase,
           bool Function(IDataDocument document) subscriptionChecker),
       Future onDeliver(
@@ -87,6 +93,7 @@ class PurchaseProduct extends Unit<ProductDetails> {
         this.isRestoreTransaction = isRestoreTransaction,
         this.onDeliver = onDeliver,
         this.value = value,
+        this.targetPath = targetPath,
         super(path, isTemporary: false, group: 0, order: 10);
   void _setInternal(ProductDetails details) {
     this.setInternal(details);

@@ -11,18 +11,28 @@ class AndroidVerifierOptions {
   /// Public key for license.
   final String publicKey;
 
-  /// URL used for server verification.
-  final String verificationServer;
+  /// URL used for server verification for consumable.
+  final String consumableVerificationServer;
+
+  /// URL used for server verification for non-consumable.
+  final String nonconsumableVerificationServer;
+
+  /// URL used for server verification for subscription.
+  final String subscriptionVerificationServer;
 
   /// Validation option for Android.
   ///
   /// [clientId]: Client ID.
   /// [publicKey]: Public key for license.
   /// [clientSecret]: Client secret.
-  /// [verificationServer]: URL used for server verification.
+  /// [consumableverificationServer]: URL used for server verification for consumable.
+  /// [nonconsumableverificationServer]: URL used for server verification for non-consumable.
+  /// [subscriptionverificationServer]: URL used for server verification for subscription.
   const AndroidVerifierOptions(
       {this.clientId,
       this.publicKey,
       this.clientSecret,
-      this.verificationServer});
+      this.consumableVerificationServer,
+      this.nonconsumableVerificationServer,
+      this.subscriptionVerificationServer});
 }

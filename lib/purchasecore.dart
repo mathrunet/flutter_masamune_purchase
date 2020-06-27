@@ -72,7 +72,7 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   static bool get isInitialized => _isInitialized;
   static bool _isInitialized = false;
 
-
+  /// True if restored.
   static bool get isRestored => _isRestored;
   static bool _isRestored = false;
 
@@ -299,7 +299,9 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
             product.isRestoreTransaction == null ||
             !await product.isRestoreTransaction(
                 purchase,
-                (document) => document.getString(this.subscribeOptions.productIDKey) ==
+                (document) => document.getString(
+                  this.subscribeOptions.userIDKey
+                ) == this.userId && document.getString(this.subscribeOptions.productIDKey) ==
                         purchase.productID)) continue;
         Log.msg("Restore transaction: ${purchase.productID}");
         if (this._onVerify != null &&

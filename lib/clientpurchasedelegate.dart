@@ -63,7 +63,7 @@ class ClientPurchaseDelegate {
           res[tmp.key] = tmp.value;
         }
       }
-      res[core.subscribeOptions.expiryDateKey] = map["expiryTimeMillis"];
+      res[core.subscribeOptions.expiryDateKey] = int.tryParse(map["expiryTimeMillis"]);
       res[core.subscribeOptions.tokenKey] =
           purchase.billingClientPurchase.purchaseToken;
       res[core.subscribeOptions.productIDKey] = purchase.productID;
@@ -135,7 +135,7 @@ class ClientPurchaseDelegate {
           !map.containsKey("receipt") ||
           !map["receipt"].containsKey("bundle_id")) return null;
       res[core.subscribeOptions.expiryDateKey] =
-          map["latest_receipt_info"].first["expires_date_ms"];
+          int.tryParse( map["latest_receipt_info"].first["expires_date_ms"] );
       res[core.subscribeOptions.tokenKey] =
           purchase.verificationData.serverVerificationData;
       res[core.subscribeOptions.productIDKey] = purchase.productID;
@@ -403,6 +403,8 @@ class ClientPurchaseDelegate {
           int startTimeMillis = int.tryParse(map["startTimeMillis"]);
           int expiryTimeMillis = int.tryParse(map["expiryTimeMillis"]);
           if (map == null ||
+              startTimeMillis == null ||
+              expiryTimeMillis == null ||
               startTimeMillis <= 0 ||
               expiryTimeMillis <= DateTime.now().toUtc().millisecondsSinceEpoch)
             return false;
@@ -442,6 +444,16 @@ class ClientPurchaseDelegate {
         if (map == null || map["status"] != 0) return false;
       } else if (status != 0) {
         return false;
+      }
+      if( product.type == ProductType.subscription ) {
+        int startTimeMillis = int.tryParse( map["latest_receipt_info"].first["purchase_date_ms"] );        
+        int expiryTimeMillis = int.tryParse( map["latest_receipt_info"].first["expires_date_ms"] );
+        if (map == null ||
+            startTimeMillis == null ||
+            expiryTimeMillis == null ||
+            startTimeMillis <= 0 ||
+            expiryTimeMillis <= DateTime.now().toUtc().millisecondsSinceEpoch)
+          return false;
       }
     }
     return true;
