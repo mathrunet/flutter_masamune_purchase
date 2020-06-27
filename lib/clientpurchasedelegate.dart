@@ -70,6 +70,7 @@ class ClientPurchaseDelegate {
       res[core.subscribeOptions.orderIDKey] = map["orderId"];
       res[core.subscribeOptions.packageNameKey] =
           purchase.billingClientPurchase.packageName;
+      res[core.subscribeOptions.platformKey] = "Android";
       if (isNotEmpty(core.userId))
         res[core.subscribeOptions.userIDKey] = core.userId;
       return res;
@@ -142,6 +143,7 @@ class ClientPurchaseDelegate {
       res[core.subscribeOptions.orderIDKey] =
           map["latest_receipt_info"].first["transaction_id"];
       res[core.subscribeOptions.packageNameKey] = map["receipt"]["bundle_id"];
+      res[core.subscribeOptions.platformKey] = "IOS";
       if (isNotEmpty(core.userId))
         res[core.subscribeOptions.userIDKey] = core.userId;
       return res;
@@ -153,16 +155,13 @@ class ClientPurchaseDelegate {
   ///
   /// [core]: PurchaseCore object.
   static Future checkSubscription(PurchaseCore core) async {
-    if (Config.isAndroid) {
-      if (core.androidVerifierOptions == null ||
-          isEmpty(core.androidRefreshToken) ||
-          isEmpty(core.androidVerifierOptions.clientId) ||
-          isEmpty(core.androidVerifierOptions.clientSecret) ||
-          isEmpty(core.androidVerifierOptions.publicKey)) return;
-    } else if (Config.isIOS) {
-      if (core.iosVerifierOptions == null ||
-          isEmpty(core.iosVerifierOptions.sharedSecret)) return;
-    }
+    if (core.androidVerifierOptions == null ||
+        isEmpty(core.androidRefreshToken) ||
+        isEmpty(core.androidVerifierOptions.clientId) ||
+        isEmpty(core.androidVerifierOptions.clientSecret) ||
+        isEmpty(core.androidVerifierOptions.publicKey)) return;
+    if (core.iosVerifierOptions == null ||
+        isEmpty(core.iosVerifierOptions.sharedSecret)) return;
     if (isEmpty(core.subscribeOptions.expiryDateKey) ||
         isEmpty(core.subscribeOptions.tokenKey) ||
         isEmpty(core.subscribeOptions.orderIDKey) ||
@@ -193,24 +192,26 @@ class ClientPurchaseDelegate {
       updated.add(document);
     }
     if (updated.length <= 0) return;
-    if (Config.isAndroid) {
-      Response response =
-          await post("https://accounts.google.com/o/oauth2/token", headers: {
-        "content-type": "application/x-www-form-urlencoded"
-      }, body: {
-        "grant_type": "refresh_token",
-        "client_id": core.androidVerifierOptions.clientId,
-        "client_secret": core.androidVerifierOptions.clientSecret,
-        "refresh_token": core.androidRefreshToken
-      });
-      if (response.statusCode != 200) return;
-      Map<String, dynamic> map = Json.decodeAsMap(response.body);
-      if (map == null) return;
-      String accessToken = map["access_token"];
-      if (isEmpty(accessToken)) return;
-      for (IDataDocument document in updated) {
-        if (document == null) continue;
-        String token = document.getString(core.subscribeOptions.tokenKey);
+    Response response =
+        await post("https://accounts.google.com/o/oauth2/token", headers: {
+      "content-type": "application/x-www-form-urlencoded"
+    }, body: {
+      "grant_type": "refresh_token",
+      "client_id": core.androidVerifierOptions.clientId,
+      "client_secret": core.androidVerifierOptions.clientSecret,
+      "refresh_token": core.androidRefreshToken
+    });
+    if (response.statusCode != 200) return;
+    Map<String, dynamic> map = Json.decodeAsMap(response.body);
+    if (map == null) return;
+    String accessToken = map["access_token"];
+    if (isEmpty(accessToken)) return;
+    for (IDataDocument document in updated) {
+      if (document == null) continue;
+      String platform = document.getString(core.subscribeOptions.platformKey);
+      String token = document.getString(core.subscribeOptions.tokenKey);
+      switch(platform){
+        case "Android":
         String packageName =
             document.getString(core.subscribeOptions.packageNameKey);
         String productId =
@@ -251,11 +252,8 @@ class ClientPurchaseDelegate {
           Log.msg(
               "Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
         }
-      }
-    } else if (Config.isIOS) {
-      for (IDataDocument document in updated) {
-        if (document == null) continue;
-        String token = document.getString(core.subscribeOptions.tokenKey);
+        break;
+        case "IOS":
         if (isEmpty(token)) continue;
         Response response = await post(
             "https://buy.itunes.apple.com/verifyReceipt",
@@ -336,6 +334,7 @@ class ClientPurchaseDelegate {
           Log.msg(
               "Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
         }
+        break;
       }
     }
   }
