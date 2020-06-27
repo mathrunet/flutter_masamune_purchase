@@ -70,7 +70,11 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
 
   /// True if the billing system has been initialized.
   static bool get isInitialized => _isInitialized;
-  static bool _isInitialized;
+  static bool _isInitialized = false;
+
+
+  static bool get isRestored => _isRestored;
+  static bool _isRestored = false;
 
   /// Class for managing billing process.
   ///
@@ -316,6 +320,7 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
             break;
         }
         Log.msg("Restored transaction: ${purchase.productID}");
+        _isRestored = true;
       }
       if (this.subscribeOptions != null && this._onCheckSubscription != null) {
         await this._onCheckSubscription(this);
