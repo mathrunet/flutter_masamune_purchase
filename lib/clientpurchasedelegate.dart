@@ -165,6 +165,7 @@ class ClientPurchaseDelegate {
     if (isEmpty(core.subscribeOptions.expiryDateKey) ||
         isEmpty(core.subscribeOptions.tokenKey) ||
         isEmpty(core.subscribeOptions.orderIDKey) ||
+        isEmpty(core.subscribeOptions.platformKey) ||
         isEmpty(core.subscribeOptions.packageNameKey) ||
         isEmpty(core.subscribeOptions.productIDKey) ||
         isEmpty(core.subscribeOptions.userIDKey) ||
@@ -180,6 +181,7 @@ class ClientPurchaseDelegate {
       if (document == null ||
           !document.containsKey(core.subscribeOptions.expiryDateKey) ||
           !document.containsKey(core.subscribeOptions.tokenKey) ||
+          !document.containsKey(core.subscribeOptions.platformKey) ||
           !document.containsKey(core.subscribeOptions.orderIDKey) ||
           !document.containsKey(core.subscribeOptions.packageNameKey) ||
           !document.containsKey(core.subscribeOptions.productIDKey)) continue;
@@ -248,6 +250,8 @@ class ClientPurchaseDelegate {
               document[tmp.key] = tmp.value;
             }
           }
+          document[core.subscribeOptions.expiryDateKey] = int.tryParse(map["expiryTimeMillis"]);
+          document[core.subscribeOptions.orderIDKey] = map["orderId"];
           await document.save();
           Log.msg(
               "Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
@@ -330,6 +334,10 @@ class ClientPurchaseDelegate {
               document[tmp.key] = tmp.value;
             }
           }
+          document[core.subscribeOptions.expiryDateKey] =
+              int.tryParse( map["latest_receipt_info"].first["expires_date_ms"] );
+          document[core.subscribeOptions.orderIDKey] =
+              map["latest_receipt_info"].first["transaction_id"];
           await document.save();
           Log.msg(
               "Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
