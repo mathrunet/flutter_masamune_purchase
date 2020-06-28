@@ -309,9 +309,9 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   /// Restore purchase.
   ///
   /// Please use it manually or immediately after user registration.
-  /// 
+  ///
   /// [timeout]: Timeout settings.
-  static Future<PurchaseCore> restore({Duration timeout = Const.timeout}){
+  static Future<PurchaseCore> restore({Duration timeout = Const.timeout}) {
     PurchaseCore collection = PathMap.get<PurchaseCore>(_systemPath);
     if (collection == null || !isInitialized) {
       Log.error("It has not been initialized. "
@@ -324,7 +324,8 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
 
   void _restoreProcess(Duration timeout) async {
     try {
-      this.init();      final QueryPurchaseDetailsResponse purchaseResponse =
+      this.init();
+      final QueryPurchaseDetailsResponse purchaseResponse =
           await _connection.queryPastPurchases().timeout(timeout);
       if (purchaseResponse.error != null) {
         this.error(
@@ -340,11 +341,10 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
             !await product.isRestoreTransaction(
                 purchase,
                 (document) =>
-                    document.getString(this.subscribeOptions.userIDKey) ==
-                        this.userId &&
-                    document.getString(this.subscribeOptions.productIDKey) ==
-                        purchase.productID)) continue;
-        Log.msg("Restore transaction: ${purchase.productID}");
+                    document.getString(this.subscribeOptions.purchaseIDKey) ==
+                    purchase.purchaseID)) continue;
+        Log.msg(
+            "Restore transaction: ${purchase.productID}/${purchase.purchaseID}");
         if (this._onVerify != null &&
             !await this._onVerify(purchase, product, this).timeout(timeout))
           continue;
@@ -380,7 +380,9 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   /// [sandboxTesting]: True for sandbox environment.
   /// [timeout]: Timeout settings.
   static Future<PurchaseCore> purchase(String id,
-      {String applicationUserName, bool sandboxTesting = false, Duration timeout = Const.timeout}) {
+      {String applicationUserName,
+      bool sandboxTesting = false,
+      Duration timeout = Const.timeout}) {
     assert(isNotEmpty(id));
     assert(isInitialized);
     PurchaseCore collection = PathMap.get<PurchaseCore>(_systemPath);
@@ -400,14 +402,16 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
     collection._purchaseProcess(
         id: id,
         applicationUserName: applicationUserName,
-        sandboxTesting: sandboxTesting, timeout: timeout);
+        sandboxTesting: sandboxTesting,
+        timeout: timeout);
     return collection.future;
   }
 
   void _purchaseProcess(
       {String id,
       String applicationUserName,
-      bool sandboxTesting = false, Duration timeout = Const.timeout}) async {
+      bool sandboxTesting = false,
+      Duration timeout = Const.timeout}) async {
     try {
       this.init();
       PurchaseProduct product = this.data[id];
@@ -416,11 +420,15 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
           applicationUserName: applicationUserName,
           sandboxTesting: sandboxTesting);
       if (product.type == ProductType.consumable) {
-        await _connection.buyConsumable(
-            purchaseParam: purchaseParam,
-            autoConsume: this._autoConsumeOnAndroid || Config.isIOS).timeout(timeout);
+        await _connection
+            .buyConsumable(
+                purchaseParam: purchaseParam,
+                autoConsume: this._autoConsumeOnAndroid || Config.isIOS)
+            .timeout(timeout);
       } else {
-        await _connection.buyNonConsumable(purchaseParam: purchaseParam).timeout(timeout);
+        await _connection
+            .buyNonConsumable(purchaseParam: purchaseParam)
+            .timeout(timeout);
       }
       this.done();
     } catch (e) {
