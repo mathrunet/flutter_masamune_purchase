@@ -316,7 +316,7 @@ class ClientPurchaseDelegate {
             document[core.subscribeOptions.expiryDateKey] = document.getInt(
                     core.subscribeOptions.expiryDateKey,
                     DateTime.now().toUtc().millisecondsSinceEpoch) +
-                Duration(hours: 2).inMilliseconds;
+                core.subscribeOptions.renewDuration.inMilliseconds;
             await document.save();
             Log.msg(
                 "Postponing expiration of subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
