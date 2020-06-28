@@ -12,7 +12,7 @@ class PurchaseProduct extends Unit<ProductDetails> {
 
   /// Product value.
   final double value;
-  
+
   /// Target path.
   final String targetPath;
 
@@ -42,8 +42,8 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// [isTemporary]: True if the data is temporary.
   @override
   T createInstance<T extends IClonable>(String path, bool isTemporary) =>
-      PurchaseProduct._(path, this.type, this.value, this.targetPath, this.isRestoreTransaction,
-          this.onDeliver) as T;
+      PurchaseProduct._(path, this.type, this.value, this.targetPath,
+          this.isRestoreTransaction, this.onDeliver) as T;
 
   /// Define the billing item.
   ///

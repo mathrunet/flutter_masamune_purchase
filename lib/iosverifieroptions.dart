@@ -20,5 +20,9 @@ class IOSVerifierOptions {
   /// [consumableverificationServer]: URL used for server verification for consumable.
   /// [nonconsumableverificationServer]: URL used for server verification for non-consumable.
   /// [subscriptionverificationServer]: URL used for server verification for subscription.
-  const IOSVerifierOptions({this.sharedSecret, this.consumableVerificationServer,this.nonconsumableVerificationServer,this.subscriptionVerificationServer});
+  const IOSVerifierOptions(
+      {this.sharedSecret,
+      this.consumableVerificationServer,
+      this.nonconsumableVerificationServer,
+      this.subscriptionVerificationServer});
 }

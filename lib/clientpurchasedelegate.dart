@@ -26,6 +26,7 @@ class ClientPurchaseDelegate {
           isEmpty(core.subscribeOptions.orderIDKey) ||
           isEmpty(core.subscribeOptions.packageNameKey) ||
           isEmpty(core.subscribeOptions.productIDKey) ||
+          isEmpty(core.subscribeOptions.purchaseIDKey) ||
           isEmpty(core.subscribeOptions.userIDKey)) return null;
       Response response =
           await post("https://accounts.google.com/o/oauth2/token", headers: {
@@ -63,9 +64,11 @@ class ClientPurchaseDelegate {
           res[tmp.key] = tmp.value;
         }
       }
-      res[core.subscribeOptions.expiryDateKey] = int.tryParse(map["expiryTimeMillis"]);
+      int expiryTimeMillis = int.tryParse(map["expiryTimeMillis"]);
+      res[core.subscribeOptions.expiryDateKey] = expiryTimeMillis;
       res[core.subscribeOptions.tokenKey] =
           purchase.billingClientPurchase.purchaseToken;
+      res[core.subscribeOptions.purchaseIDKey] = purchase.purchaseID;
       res[core.subscribeOptions.productIDKey] = purchase.productID;
       res[core.subscribeOptions.orderIDKey] = map["orderId"];
       res[core.subscribeOptions.packageNameKey] =
@@ -73,6 +76,8 @@ class ClientPurchaseDelegate {
       res[core.subscribeOptions.platformKey] = "Android";
       if (isNotEmpty(core.userId))
         res[core.subscribeOptions.userIDKey] = core.userId;
+      if (expiryTimeMillis <= DateTime.now().toUtc().millisecondsSinceEpoch)
+        res[core.subscribeOptions.expiredKey] = true;
       return res;
     } else if (Config.isIOS) {
       if (core.iosVerifierOptions == null ||
@@ -82,6 +87,7 @@ class ClientPurchaseDelegate {
           isEmpty(core.subscribeOptions.orderIDKey) ||
           isEmpty(core.subscribeOptions.packageNameKey) ||
           isEmpty(core.subscribeOptions.productIDKey) ||
+          isEmpty(core.subscribeOptions.purchaseIDKey) ||
           isEmpty(core.subscribeOptions.userIDKey)) return null;
       Response response = await post(
           "https://buy.itunes.apple.com/verifyReceipt",
@@ -135,17 +141,21 @@ class ClientPurchaseDelegate {
           !map["latest_receipt_info"].first.containsKey("transaction_id") ||
           !map.containsKey("receipt") ||
           !map["receipt"].containsKey("bundle_id")) return null;
-      res[core.subscribeOptions.expiryDateKey] =
-          int.tryParse( map["latest_receipt_info"].first["expires_date_ms"] );
+      int expiryTimeMillis =
+          int.tryParse(map["latest_receipt_info"].first["expires_date_ms"]);
+      res[core.subscribeOptions.expiryDateKey] = expiryTimeMillis;
       res[core.subscribeOptions.tokenKey] =
           purchase.verificationData.serverVerificationData;
       res[core.subscribeOptions.productIDKey] = purchase.productID;
+      res[core.subscribeOptions.purchaseIDKey] = purchase.purchaseID;
       res[core.subscribeOptions.orderIDKey] =
           map["latest_receipt_info"].first["transaction_id"];
       res[core.subscribeOptions.packageNameKey] = map["receipt"]["bundle_id"];
       res[core.subscribeOptions.platformKey] = "IOS";
       if (isNotEmpty(core.userId))
         res[core.subscribeOptions.userIDKey] = core.userId;
+      if (expiryTimeMillis <= DateTime.now().toUtc().millisecondsSinceEpoch)
+        res[core.subscribeOptions.expiredKey] = true;
       return res;
     }
     return null;
@@ -169,6 +179,7 @@ class ClientPurchaseDelegate {
         isEmpty(core.subscribeOptions.packageNameKey) ||
         isEmpty(core.subscribeOptions.productIDKey) ||
         isEmpty(core.subscribeOptions.userIDKey) ||
+        isEmpty(core.subscribeOptions.purchaseIDKey) ||
         isEmpty(core.subscribeOptions.expiredKey)) return;
     if (core.subscribeOptions.data == null &&
         core.subscribeOptions.task == null) return;
@@ -212,71 +223,57 @@ class ClientPurchaseDelegate {
       if (document == null) continue;
       String platform = document.getString(core.subscribeOptions.platformKey);
       String token = document.getString(core.subscribeOptions.tokenKey);
-      switch(platform){
+      switch (platform) {
         case "Android":
-        String packageName =
-            document.getString(core.subscribeOptions.packageNameKey);
-        String productId =
-            document.getString(core.subscribeOptions.productIDKey);
-        if (isEmpty(token) || isEmpty(packageName) || isEmpty(productId))
-          continue;
-        response = await get(
-            "https://www.googleapis.com/androidpublisher/v3/applications/"
-            "$packageName/purchases/subscriptions/"
-            "$productId/tokens/"
-            "$token?access_token=$accessToken",
-            headers: {"content-type": "application/json"});
-        if (response.statusCode != 200) return false;
-        map = Json.decodeAsMap(response.body);
-        int expiryTimeMillis = int.tryParse(map["expiryTimeMillis"]);
-        String orderId = map["orderId"];
-        if (expiryTimeMillis < DateTime.now().toUtc().millisecondsSinceEpoch) {
-          document[core.subscribeOptions.expiredKey] = true;
-          await document.save();
-          Log.msg(
-              "Expired subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
-        } else if (isNotEmpty(orderId) &&
-            (core.subscribeOptions.existOrderId == null ||
-                !await core.subscribeOptions.existOrderId(orderId))) {
-          for (MapEntry<String, dynamic> tmp in map.entries) {
-            if (isEmpty(tmp.key) || tmp.value == null) continue;
-            if (tmp.value is String) {
-              int i = int.tryParse(tmp.value);
-              if (i == null)
+          String packageName =
+              document.getString(core.subscribeOptions.packageNameKey);
+          String productId =
+              document.getString(core.subscribeOptions.productIDKey);
+          if (isEmpty(token) || isEmpty(packageName) || isEmpty(productId))
+            continue;
+          response = await get(
+              "https://www.googleapis.com/androidpublisher/v3/applications/"
+              "$packageName/purchases/subscriptions/"
+              "$productId/tokens/"
+              "$token?access_token=$accessToken",
+              headers: {"content-type": "application/json"});
+          if (response.statusCode != 200) return false;
+          map = Json.decodeAsMap(response.body);
+          int expiryTimeMillis = int.tryParse(map["expiryTimeMillis"]);
+          String orderId = map["orderId"];
+          if (expiryTimeMillis <
+              DateTime.now().toUtc().millisecondsSinceEpoch) {
+            document[core.subscribeOptions.expiredKey] = true;
+            await document.save();
+            Log.msg(
+                "Expired subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
+          } else if (isNotEmpty(orderId) &&
+              (core.subscribeOptions.existOrderId == null ||
+                  !await core.subscribeOptions.existOrderId(orderId))) {
+            for (MapEntry<String, dynamic> tmp in map.entries) {
+              if (isEmpty(tmp.key) || tmp.value == null) continue;
+              if (tmp.value is String) {
+                int i = int.tryParse(tmp.value);
+                if (i == null)
+                  document[tmp.key] = tmp.value;
+                else
+                  document[tmp.key] = i;
+              } else {
                 document[tmp.key] = tmp.value;
-              else
-                document[tmp.key] = i;
-            } else {
-              document[tmp.key] = tmp.value;
+              }
             }
+            document[core.subscribeOptions.expiryDateKey] =
+                int.tryParse(map["expiryTimeMillis"]);
+            document[core.subscribeOptions.orderIDKey] = map["orderId"];
+            await document.save();
+            Log.msg(
+                "Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
           }
-          document[core.subscribeOptions.expiryDateKey] = int.tryParse(map["expiryTimeMillis"]);
-          document[core.subscribeOptions.orderIDKey] = map["orderId"];
-          await document.save();
-          Log.msg(
-              "Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
-        }
-        break;
+          break;
         case "IOS":
-        if (isEmpty(token)) continue;
-        Response response = await post(
-            "https://buy.itunes.apple.com/verifyReceipt",
-            headers: {
-              "content-type": "application/json",
-              "accept": "application/json"
-            },
-            body: Json.encode({
-              "receipt-data": token,
-              "password": core.iosVerifierOptions.sharedSecret,
-              "exclude-old-transactions": true
-            }));
-        if (response.statusCode != 200) return null;
-        Map<String, dynamic> map = Json.decodeAsMap(response.body);
-        if (map == null) return null;
-        int status = map["status"];
-        if (status == 21007 || status == 21008) {
-          response = await post(
-              "https://sandbox.itunes.apple.com/verifyReceipt",
+          if (isEmpty(token)) continue;
+          Response response = await post(
+              "https://buy.itunes.apple.com/verifyReceipt",
               headers: {
                 "content-type": "application/json",
                 "accept": "application/json"
@@ -287,62 +284,80 @@ class ClientPurchaseDelegate {
                 "exclude-old-transactions": true
               }));
           if (response.statusCode != 200) return null;
-          map = Json.decodeAsMap(response.body);
-          if (map == null || map["status"] != 0) return null;
-        }
-        int expiryTimeMillis =
-            int.tryParse(map["latest_receipt_info"].first["expires_date_ms"]);
-        if (expiryTimeMillis == null) continue;
-        String orderId = map["latest_receipt_info"].first["transaction_id"];
-        if (map.containsKey("pending_renewal_info") &&
-            map["pending_renewal_info"].any((info) {
-              if (!info.containsKey("is_in_billing_retry_period")) return false;
-              return info["is_in_billing_retry_period"] == "1";
-            })) {
-          document[core.subscribeOptions.expiryDateKey] = document.getInt(
-                  core.subscribeOptions.expiryDateKey,
-                  DateTime.now().toUtc().millisecondsSinceEpoch) +
-              Duration(hours: 2).inMilliseconds;
-          await document.save();
-          Log.msg(
-              "Postponing expiration of subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
-        } else if (map.containsKey("pending_renewal_info") &&
-            expiryTimeMillis < DateTime.now().toUtc().millisecondsSinceEpoch &&
-            map["pending_renewal_info"].every((info) {
-              if (!info.containsKey("is_in_billing_retry_period") ||
-                  !info.containsKey("auto_renew_status")) return true;
-              return info["is_in_billing_retry_period"] != "1" &&
-                  info["auto_renew_status"] != "1";
-            })) {
-          document[core.subscribeOptions.expiredKey] = true;
-          await document.save();
-          Log.msg(
-              "Expired subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
-        } else if (isNotEmpty(orderId) &&
-            (core.subscribeOptions.existOrderId == null ||
-                !await core.subscribeOptions.existOrderId(orderId))) {
-          for (MapEntry<String, dynamic> tmp
-              in map["latest_receipt_info"].first.entries) {
-            if (isEmpty(tmp.key) || tmp.value == null) continue;
-            if (tmp.value is String) {
-              int i = int.tryParse(tmp.value);
-              if (i == null)
-                document[tmp.key] = tmp.value;
-              else
-                document[tmp.key] = i;
-            } else {
-              document[tmp.key] = tmp.value;
-            }
+          Map<String, dynamic> map = Json.decodeAsMap(response.body);
+          if (map == null) return null;
+          int status = map["status"];
+          if (status == 21007 || status == 21008) {
+            response = await post(
+                "https://sandbox.itunes.apple.com/verifyReceipt",
+                headers: {
+                  "content-type": "application/json",
+                  "accept": "application/json"
+                },
+                body: Json.encode({
+                  "receipt-data": token,
+                  "password": core.iosVerifierOptions.sharedSecret,
+                  "exclude-old-transactions": true
+                }));
+            if (response.statusCode != 200) return null;
+            map = Json.decodeAsMap(response.body);
+            if (map == null || map["status"] != 0) return null;
           }
-          document[core.subscribeOptions.expiryDateKey] =
-              int.tryParse( map["latest_receipt_info"].first["expires_date_ms"] );
-          document[core.subscribeOptions.orderIDKey] =
-              map["latest_receipt_info"].first["transaction_id"];
-          await document.save();
-          Log.msg(
-              "Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
-        }
-        break;
+          int expiryTimeMillis =
+              int.tryParse(map["latest_receipt_info"].first["expires_date_ms"]);
+          if (expiryTimeMillis == null) continue;
+          String orderId = map["latest_receipt_info"].first["transaction_id"];
+          if (map.containsKey("pending_renewal_info") &&
+              map["pending_renewal_info"].any((info) {
+                if (!info.containsKey("is_in_billing_retry_period"))
+                  return false;
+                return info["is_in_billing_retry_period"] == "1";
+              })) {
+            document[core.subscribeOptions.expiryDateKey] = document.getInt(
+                    core.subscribeOptions.expiryDateKey,
+                    DateTime.now().toUtc().millisecondsSinceEpoch) +
+                Duration(hours: 2).inMilliseconds;
+            await document.save();
+            Log.msg(
+                "Postponing expiration of subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
+          } else if (map.containsKey("pending_renewal_info") &&
+              expiryTimeMillis <
+                  DateTime.now().toUtc().millisecondsSinceEpoch &&
+              map["pending_renewal_info"].every((info) {
+                if (!info.containsKey("is_in_billing_retry_period") ||
+                    !info.containsKey("auto_renew_status")) return true;
+                return info["is_in_billing_retry_period"] != "1" &&
+                    info["auto_renew_status"] != "1";
+              })) {
+            document[core.subscribeOptions.expiredKey] = true;
+            await document.save();
+            Log.msg(
+                "Expired subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
+          } else if (isNotEmpty(orderId) &&
+              (core.subscribeOptions.existOrderId == null ||
+                  !await core.subscribeOptions.existOrderId(orderId))) {
+            for (MapEntry<String, dynamic> tmp
+                in map["latest_receipt_info"].first.entries) {
+              if (isEmpty(tmp.key) || tmp.value == null) continue;
+              if (tmp.value is String) {
+                int i = int.tryParse(tmp.value);
+                if (i == null)
+                  document[tmp.key] = tmp.value;
+                else
+                  document[tmp.key] = i;
+              } else {
+                document[tmp.key] = tmp.value;
+              }
+            }
+            document[core.subscribeOptions.expiryDateKey] = int.tryParse(
+                map["latest_receipt_info"].first["expires_date_ms"]);
+            document[core.subscribeOptions.orderIDKey] =
+                map["latest_receipt_info"].first["transaction_id"];
+            await document.save();
+            Log.msg(
+                "Updated subscription: ${document.getString(core.subscribeOptions.productIDKey)}");
+          }
+          break;
       }
     }
   }
@@ -412,9 +427,7 @@ class ClientPurchaseDelegate {
           if (map == null ||
               startTimeMillis == null ||
               expiryTimeMillis == null ||
-              startTimeMillis <= 0 ||
-              expiryTimeMillis <= DateTime.now().toUtc().millisecondsSinceEpoch)
-            return false;
+              startTimeMillis <= 0) return false;
           break;
       }
     } else if (Config.isIOS) {
@@ -452,15 +465,15 @@ class ClientPurchaseDelegate {
       } else if (status != 0) {
         return false;
       }
-      if( product.type == ProductType.subscription ) {
-        int startTimeMillis = int.tryParse( map["latest_receipt_info"].first["purchase_date_ms"] );        
-        int expiryTimeMillis = int.tryParse( map["latest_receipt_info"].first["expires_date_ms"] );
+      if (product.type == ProductType.subscription) {
+        int startTimeMillis =
+            int.tryParse(map["latest_receipt_info"].first["purchase_date_ms"]);
+        int expiryTimeMillis =
+            int.tryParse(map["latest_receipt_info"].first["expires_date_ms"]);
         if (map == null ||
             startTimeMillis == null ||
             expiryTimeMillis == null ||
-            startTimeMillis <= 0 ||
-            expiryTimeMillis <= DateTime.now().toUtc().millisecondsSinceEpoch)
-          return false;
+            startTimeMillis <= 0) return false;
       }
     }
     return true;

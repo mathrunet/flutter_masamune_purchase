@@ -32,6 +32,9 @@ class SubscribeOptions {
   /// Platform key.
   final String platformKey;
 
+  /// Purchase ID key.
+  final String purchaseIDKey;
+
   /// Callback that returns True if the order id exists.
   final Future<bool> Function(String orderId) existOrderId;
 
@@ -50,6 +53,7 @@ class SubscribeOptions {
   /// [orderIDKey]: Order ID key.
   /// [userIDKey]: User ID key.
   /// [expiredKey]: Expiration key.
+  /// [purchaseIDKey]: Purchase ID key.
   /// [platformKey]: Platform key.
   /// [existOrderId]: Callback that returns True if the order id exists.
   const SubscribeOptions(
@@ -59,6 +63,7 @@ class SubscribeOptions {
       this.userIDKey = "user",
       this.expiryDateKey = "expiredTime",
       this.renewDuration = const Duration(hours: 2),
+      this.purchaseIDKey = "purchaseId",
       this.tokenKey = "token",
       this.expiredKey = "expired",
       this.productIDKey = "productId",
