@@ -89,6 +89,11 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
     return null;
   }
 
+  /// Run in the [main] method before executing with [initialize].
+  static void enablePendingPurchases() {
+    InAppPurchaseConnection.enablePendingPurchases();
+  }
+
   /// Class for managing billing process.
   ///
   /// Initialize by first executing [initialize()].
