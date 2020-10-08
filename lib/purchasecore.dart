@@ -441,6 +441,26 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
     }
   }
 
+  /// Find the [PurchaseProduct] from [ProductId].
+  ///
+  /// [id]: Product Id.
+  static PurchaseProduct getProduct(String id) {
+    if (!PurchaseCore.isInitialized) {
+      Log.error("It has not been initialized. "
+          "First, execute [initialize] to initialize.");
+      return null;
+    }
+    return PurchaseCore().findById(id);
+  }
+
+  /// Find the [PurchaseProduct] from [ProductId].
+  ///
+  /// [id]: Product Id.
+  PurchaseProduct findById(String id) {
+    if (isEmpty(id)) return null;
+    return this.data[id];
+  }
+
   /// Find the [PurchaseProduct] from [PurchaseDetails].
   ///
   /// [details]: PurchaseDetails.
