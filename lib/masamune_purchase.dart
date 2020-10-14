@@ -24,4 +24,5 @@ part 'androidverifieroptions.dart';
 part 'deliveroptions.dart';
 part 'iosverifieroptions.dart';
 part 'clientpurchasedelegate.dart';
+part 'nonepurchasedelegate.dart';
 part 'subscribeoptions.dart';

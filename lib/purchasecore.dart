@@ -148,7 +148,7 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         path: _systemPath,
         children: products,
         onDeliver: onDeliver,
-        onVerify: onVerify,
+        onVerify: onVerify ?? NonePurchaseDelegate.verify,
         onSubscribe: onSubscribe,
         onUnlock: onUnlock,
         userId: userId,
@@ -238,13 +238,13 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         Log.msg("Adding Product: ${tmp.title} (${tmp.id})");
       }
       this._stream =
-          _connection.purchaseUpdatedStream.listen((purchaseDetailsList) {
+          _connection.purchaseUpdatedStream.listen((purchaseDetailsList) async {
         try {
-          purchaseDetailsList?.forEach((purchase) async {
+          for (PurchaseDetails purchase in purchaseDetailsList) {
             PurchaseProduct product = this.findByPurchase(purchase);
             if (purchase.status != PurchaseStatus.pending) {
               if (purchase.status == PurchaseStatus.error) {
-                Log.error(purchase.error);
+                this.error(purchase.error.message);
                 return;
               } else if (purchase.status == PurchaseStatus.purchased) {
                 if (this._onVerify != null &&
@@ -279,9 +279,10 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
                 await _connection.completePurchase(purchase);
               }
             }
-          });
+          }
+          this.done();
         } catch (e) {
-          Log.error(e.toString());
+          this.error(e.toString());
         }
       }, onDone: () {
         this.dispose();
@@ -376,6 +377,48 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
     }
   }
 
+  /// Consume all purchased items.
+  ///
+  /// Please use it manually or immediately after user registration.
+  ///
+  /// [productId]: Product ID to consume.
+  /// [timeout]: Timeout settings.
+  static Future<PurchaseCore> consume(
+      {String productId, Duration timeout = Const.timeout}) {
+    PurchaseCore collection = PathMap.get<PurchaseCore>(_systemPath);
+    if (collection == null || !isInitialized) {
+      Log.error("It has not been initialized. "
+          "First, execute [initialize] to initialize.");
+      return Future.delayed(Duration.zero);
+    }
+    collection._consumeProcess(productId, timeout);
+    return collection.future;
+  }
+
+  void _consumeProcess(String productId, Duration timeout) async {
+    try {
+      this.init();
+      final QueryPurchaseDetailsResponse purchaseResponse =
+          await _connection.queryPastPurchases().timeout(timeout);
+      if (purchaseResponse.error != null) {
+        this.error(
+            "Failed to load past purchases: ${purchaseResponse.error.message}");
+        return;
+      }
+      for (PurchaseDetails purchase in purchaseResponse.pastPurchases) {
+        PurchaseProduct product = this.findByPurchase(purchase);
+        if (product.type == ProductType.consumable) continue;
+        if (isNotEmpty(productId) && product.id != productId) continue;
+        await _connection.consumePurchase(purchase);
+        Log.msg(
+            "Consumed transaction: ${purchase.productID}/${purchase.purchaseID}");
+      }
+      this.done();
+    } catch (e) {
+      this.error(e.toString());
+    }
+  }
+
   /// Process the purchase.
   ///
   /// You specify the item ID in [id], the billing process will start.
@@ -435,7 +478,6 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
             .buyNonConsumable(purchaseParam: purchaseParam)
             .timeout(timeout);
       }
-      this.done();
     } catch (e) {
       this.error(e.toString());
     }
