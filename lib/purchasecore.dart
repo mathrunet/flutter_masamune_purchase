@@ -240,10 +240,16 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       this._stream =
           _connection.purchaseUpdatedStream.listen((purchaseDetailsList) async {
         try {
+          bool done = false;
           for (PurchaseDetails purchase in purchaseDetailsList) {
             PurchaseProduct product = this.findByPurchase(purchase);
             if (purchase.status != PurchaseStatus.pending) {
               if (purchase.status == PurchaseStatus.error) {
+                if (purchase.pendingCompletePurchase) {
+                  Log.msg(
+                      "Purchase completed with error: ${purchase.productID}");
+                  await _connection.completePurchase(purchase);
+                }
                 this.error(purchase.error.message);
                 return;
               } else if (purchase.status == PurchaseStatus.purchased) {
@@ -278,9 +284,10 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
                 Log.msg("Purchase completed: ${purchase.productID}");
                 await _connection.completePurchase(purchase);
               }
+              done = true;
             }
           }
-          this.done();
+          if (done) this.done();
         } catch (e) {
           this.error(e.toString());
         }

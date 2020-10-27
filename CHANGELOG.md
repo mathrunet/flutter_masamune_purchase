@@ -1,3 +1,7 @@
+## [0.5.1] - Update README (2020.10.27)
+
+* Raised the minimum version of Flutter to 2.8.0
+
 ## [0.5.0] - Update README (2020.09.25)
 
 * Support for flutter_hooks and flutter_widget_model.
