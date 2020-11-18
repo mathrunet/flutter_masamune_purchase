@@ -25,6 +25,16 @@ class PurchaseProduct extends Unit<ProductDetails> {
           bool Function(IDataDocument document) subscriptionChecker)
       isRestoreTransaction;
 
+  /// Check out if non-consumption items and subscriptions are valid.
+  ///
+  /// If true, billing is enabled.
+  ///
+  /// [subscriptionChecker] stores the callback that checks by passing the document for subscription.
+  final Future<bool> Function(
+      PurchaseProduct product,
+      SubscribeOptions subscribeOptions,
+      bool Function(IDataDocument document) subscriptionChecker) isEnabled;
+
   /// Callback for delivering billing items.
   final Future Function(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core)
@@ -43,7 +53,7 @@ class PurchaseProduct extends Unit<ProductDetails> {
   @override
   T createInstance<T extends IClonable>(String path, bool isTemporary) =>
       PurchaseProduct._(path, this.type, this.value, this.targetPath,
-          this.isRestoreTransaction, this.onDeliver) as T;
+          this.isEnabled, this.isRestoreTransaction, this.onDeliver) as T;
 
   /// Define the billing item.
   ///
@@ -56,6 +66,7 @@ class PurchaseProduct extends Unit<ProductDetails> {
   /// [type]: Item type.
   /// [value]: Item value.
   /// [targetPath]: Target path.
+  /// [isEnabled]: Check out if non-consumption items and subscriptions are valid.
   /// [isRestoreTransaction]: Callback to restore billing.
   /// [onDeliver]: Processing at the time of billing.
   factory PurchaseProduct(
@@ -63,6 +74,10 @@ class PurchaseProduct extends Unit<ProductDetails> {
       ProductType type = ProductType.consumable,
       double value = 0,
       String targetPath,
+      Future<bool> isEnabled(
+          PurchaseProduct product,
+          SubscribeOptions subscribeOptions,
+          bool Function(IDataDocument document) subscriptionChecker),
       Future<bool> isRestoreTransaction(PurchaseDetails purchase,
           bool Function(IDataDocument document) subscriptionChecker),
       Future onDeliver(PurchaseDetails purchase, PurchaseProduct product,
@@ -77,14 +92,18 @@ class PurchaseProduct extends Unit<ProductDetails> {
     String path = "purchase://iap/$id";
     PurchaseProduct unit = PathMap.get<PurchaseProduct>(path);
     if (unit != null) return unit;
-    return PurchaseProduct._(
-        path, type, value, targetPath, isRestoreTransaction, onDeliver);
+    return PurchaseProduct._(path, type, value, targetPath, isEnabled,
+        isRestoreTransaction, onDeliver);
   }
   PurchaseProduct._(
       String path,
       ProductType type,
       double value,
       String targetPath,
+      Future<bool> isEnabled(
+          PurchaseProduct product,
+          SubscribeOptions subscribeOptions,
+          bool Function(IDataDocument document) subscriptionChecker),
       Future<bool> isRestoreTransaction(PurchaseDetails purchase,
           bool Function(IDataDocument document) subscriptionChecker),
       Future onDeliver(
@@ -93,11 +112,18 @@ class PurchaseProduct extends Unit<ProductDetails> {
         this.isRestoreTransaction = isRestoreTransaction,
         this.onDeliver = onDeliver,
         this.value = value,
+        this.isEnabled = isEnabled,
         this.targetPath = targetPath,
         super(path, isTemporary: false, group: 0, order: 10);
   void _setInternal(ProductDetails details) {
     this.setInternal(details);
   }
+
+  /// Check out if non-consumption items and subscriptions are valid.
+  ///
+  /// If true, billing is enabled.
+  bool get enabled => this.type == ProductType.consumable || this._enabled;
+  bool _enabled = false;
 
   /// Product Id.
   String get productId => this.data == null ? this.id : this.data.id;

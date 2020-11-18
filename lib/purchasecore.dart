@@ -66,6 +66,7 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
   }
 
   static InAppPurchaseConnection __connection;
+  // ignore: cancel_subscriptions
   StreamSubscription<List<PurchaseDetails>> _stream;
 
   /// True if the billing system has been initialized.
@@ -126,14 +127,15 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       Future onDeliver(
           PurchaseDetails purchase, PurchaseProduct product, PurchaseCore core),
       Future onCheckSubscription(PurchaseCore core),
-      SubscribeOptions subscribeOptions,
+      SubscribeOptions subscribeOptions = const SubscribeOptions(),
       Duration timeout = Const.timeout,
       bool autoConsumeOnAndroid = true,
       String androidRefreshToken,
       String userId,
-      AndroidVerifierOptions androidVerifierOptions,
-      IOSVerifierOptions iosVerifierOptions,
-      DeliverOptions deliverOptions}) {
+      AndroidVerifierOptions androidVerifierOptions =
+          const AndroidVerifierOptions(),
+      IOSVerifierOptions iosVerifierOptions = const IOSVerifierOptions(),
+      DeliverOptions deliverOptions = const DeliverOptions()}) {
     assert(products != null && products.length > 0);
     if (products == null || products.length <= 0) {
       Log.error("The products is empty.");
@@ -178,10 +180,10 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
       bool autoConsumeOnAndroid = true,
       String androidRefreshToken,
       this.userId,
-      this.subscribeOptions,
-      this.androidVerifierOptions,
-      this.iosVerifierOptions,
-      this.deliverOptions})
+      this.subscribeOptions = const SubscribeOptions(),
+      this.androidVerifierOptions = const AndroidVerifierOptions(),
+      this.iosVerifierOptions = const IOSVerifierOptions(),
+      this.deliverOptions = const DeliverOptions()})
       : this._onDeliver = onDeliver,
         this._onVerify = onVerify,
         this._onSubscribe = onSubscribe,
@@ -310,6 +312,7 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
           } catch (e) {}
         }
       }
+      await this._checkEnabledProcess();
       _isInitialized = true;
       this.done();
     } on TimeoutException catch (e) {
@@ -351,11 +354,13 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         if (purchase.status == PurchaseStatus.pending ||
             product.type == ProductType.consumable ||
             product.isRestoreTransaction == null ||
-            !await product.isRestoreTransaction(
-                purchase,
-                (document) =>
-                    document.getString(this.subscribeOptions.purchaseIDKey) ==
-                    purchase.purchaseID)) continue;
+            (this.subscribeOptions != null &&
+                isNotEmpty(this.subscribeOptions.purchaseIDKey) &&
+                !await product.isRestoreTransaction(
+                  purchase,
+                  (document) => this._subscriptionCheckerOnPurchase(
+                      purchase.purchaseID, document),
+                ))) continue;
         Log.msg(
             "Restore transaction: ${purchase.productID}/${purchase.purchaseID}");
         if (this._onVerify != null &&
@@ -378,6 +383,7 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
         Log.msg("Restored transaction: ${purchase.productID}");
         _isRestored = true;
       }
+      await this._checkEnabledProcess();
       this.done();
     } catch (e) {
       this.error(e.toString());
@@ -488,6 +494,68 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
     } catch (e) {
       this.error(e.toString());
     }
+  }
+
+  Future _checkEnabledProcess() async {
+    try {
+      if (this.data == null || this.data.length <= 0) return;
+      for (PurchaseProduct product in this.data.values) {
+        if (product == null || product.isEnabled == null) continue;
+        if (!await product.isEnabled(
+          product,
+          this.subscribeOptions,
+          (document) =>
+              this._subscriptionCheckerOnCheckingEnabled(product.id, document),
+        )) continue;
+        product._enabled = true;
+      }
+    } catch (e) {
+      this.error(e.toString());
+    }
+  }
+
+  bool _subscriptionCheckerOnPurchase(
+      String purchaseId, IDataDocument document) {
+    if (document == null ||
+        this.subscribeOptions == null ||
+        isEmpty(this.subscribeOptions.purchaseIDKey)) return false;
+    return document.getString(this.subscribeOptions.purchaseIDKey) ==
+        purchaseId;
+  }
+
+  bool _subscriptionCheckerOnCheckingEnabled(
+      String productId, IDataDocument document) {
+    if (document == null ||
+        this.subscribeOptions == null ||
+        isEmpty(this.subscribeOptions.productIDKey) ||
+        isEmpty(this.subscribeOptions.expiredKey)) return false;
+    return document.getString(this.subscribeOptions.productIDKey) ==
+            productId &&
+        !document.getBool(this.subscribeOptions.expiredKey, false);
+  }
+
+  /// Check out if non-consumption items and subscriptions are valid.
+  ///
+  /// If true, billing is enabled.
+  ///
+  /// [productId]: Product ID to check.
+  static bool enabled(String productId) {
+    assert(isNotEmpty(productId));
+    if (isEmpty(productId)) {
+      Log.error("The products id is empty.");
+      return false;
+    }
+    if (!PurchaseCore.isInitialized) {
+      Log.error("It has not been initialized. "
+          "First, execute [initialize] to initialize.");
+      return false;
+    }
+    PurchaseProduct product = PurchaseCore().findById(productId);
+    if (product == null) {
+      Log.error("The product is not found.");
+      return false;
+    }
+    return product.enabled;
   }
 
   /// Find the [PurchaseProduct] from [ProductId].
