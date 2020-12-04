@@ -272,7 +272,8 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
                       break;
                   }
                 } else {
-                  Log.error("The purchase failed.");
+                  this.error(
+                      "There is no method for purchase. Set up a method for purchasing.");
                   return;
                 }
               }
@@ -289,6 +290,7 @@ class PurchaseCore extends TaskCollection<PurchaseProduct> {
               done = true;
             }
           }
+          await this._checkEnabledProcess();
           if (done) this.done();
         } catch (e) {
           this.error(e.toString());
