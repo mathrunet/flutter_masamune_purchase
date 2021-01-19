@@ -14,8 +14,8 @@ import 'package:flutter/widgets.dart';
 import 'package:masamune_core/masamune_core.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:simple_rsa/simple_rsa.dart';
-export 'package:masamune_flutter/masamune_flutter.dart';
 import 'package:in_app_purchase/store_kit_wrappers.dart';
+export 'package:masamune_flutter/masamune_flutter.dart';
 
 part 'purchasecore.dart';
 part 'producttype.dart';
