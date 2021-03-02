@@ -1,4 +1,4 @@
-part of masamune.purchase;
+part of masamune_purchase;
 
 /// Product type.
 enum ProductType {

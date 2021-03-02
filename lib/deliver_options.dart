@@ -1,4 +1,4 @@
-part of masamune.purchase;
+part of masamune_purchase;
 
 /// Options for distributing billing items.
 class DeliverOptions {

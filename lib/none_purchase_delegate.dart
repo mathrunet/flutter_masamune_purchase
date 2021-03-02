@@ -1,4 +1,4 @@
-part of masamune.purchase;
+part of masamune_purchase;
 
 /// Class for managing billing process.
 ///
@@ -14,6 +14,6 @@ class NonePurchaseDelegate {
   /// [product]: The purchased product.
   /// [core]: Purchase Core instance.
   static Future<bool> verify(PurchaseDetails purchase, PurchaseProduct product,
-          PurchaseCore core) async =>
+          PurchaseCoreModel core) async =>
       true;
 }
