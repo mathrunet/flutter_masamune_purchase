@@ -18,6 +18,7 @@ import 'package:in_app_purchase/store_kit_wrappers.dart';
 export 'package:masamune/masamune.dart';
 
 part 'purchase_core.dart';
+part 'purchase_model.dart';
 part 'product_type.dart';
 part 'purchase_product.dart';
 part 'android_verifier_options.dart';

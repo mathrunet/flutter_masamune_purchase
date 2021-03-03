@@ -68,7 +68,7 @@ class PurchaseProduct {
 
   /// Callback for delivering billing items.
   final Future Function(PurchaseDetails purchase, PurchaseProduct product,
-      PurchaseCoreModel core)? onDeliver;
+      PurchaseModel core)? onDeliver;
 
   /// Check out if non-consumption items and subscriptions are valid.
   ///

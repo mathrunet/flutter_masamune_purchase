@@ -14,6 +14,6 @@ class NonePurchaseDelegate {
   /// [product]: The purchased product.
   /// [core]: Purchase Core instance.
   static Future<bool> verify(PurchaseDetails purchase, PurchaseProduct product,
-          PurchaseCoreModel core) async =>
+          PurchaseModel core) async =>
       true;
 }
