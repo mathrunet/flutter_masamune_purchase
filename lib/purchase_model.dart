@@ -92,7 +92,8 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
             "${productDetailResponse.error?.message}");
       }
       if (productDetailResponse.productDetails.isEmpty) {
-        throw Exception("The product is empty.");
+        debugPrint("The product is empty.");
+        return;
       }
       for (final tmp in productDetailResponse.productDetails) {
         final found = value.firstWhereOrNull((product) => product.id == tmp.id);
@@ -189,8 +190,11 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
   /// [timeout]: Timeout settings.
   Future<PurchaseModel> restore(
       {Duration timeout = const Duration(seconds: 30)}) async {
-    assert(isInitialized,
-        "It has not been initialized. First, execute [initialize] to initialize.");
+    if (!isInitialized) {
+      debugPrint(
+          "It has not been initialized. First, execute [initialize] to initialize.");
+      return this;
+    }
     await _restoreProcess(timeout);
     return this;
   }
@@ -256,8 +260,11 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
   Future<PurchaseModel> consume(
       {required String productId,
       Duration timeout = const Duration(seconds: 30)}) async {
-    assert(isInitialized,
-        "It has not been initialized. First, execute [initialize] to initialize.");
+    if (!isInitialized) {
+      debugPrint(
+          "It has not been initialized. First, execute [initialize] to initialize.");
+      return this;
+    }
     await _consumeProcess(productId, timeout);
     return this;
   }
@@ -304,9 +311,12 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
       {String? applicationUserName,
       bool sandboxTesting = false,
       Duration timeout = const Duration(seconds: 30)}) async {
+    if (!isInitialized) {
+      debugPrint(
+          "It has not been initialized. First, execute [initialize] to initialize.");
+      return this;
+    }
     assert(id.isNotEmpty, "The id is empty.");
-    assert(isInitialized,
-        "It has not been initialized. First, execute [initialize] to initialize.");
     final product = value.firstWhereOrNull((product) => product.id == id);
     if (product == null || product._productDetails == null) {
       throw Exception("Product not found: $id");
@@ -377,7 +387,7 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
     if (subscribeOptions.purchaseIDKey.isEmpty) {
       return false;
     }
-    return data.get<String>(subscribeOptions.purchaseIDKey) == purchaseId;
+    return data.get(subscribeOptions.purchaseIDKey, "") == purchaseId;
   }
 
   bool _subscriptionCheckerOnCheckingEnabled(
@@ -386,16 +396,19 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
         subscribeOptions.expiredKey.isEmpty) {
       return false;
     }
-    return data.get<String>(subscribeOptions.productIDKey) == productId &&
-        !data.get<bool>(subscribeOptions.expiredKey).def(false);
+    return data.get(subscribeOptions.productIDKey, "") == productId &&
+        !data.get(subscribeOptions.expiredKey, false);
   }
 
   /// Find the [PurchaseProduct] from [ProductId].
   ///
   /// [productId]: Product Id.
   PurchaseProduct? getProduct(String productId) {
-    assert(isInitialized,
-        "It has not been initialized. First, execute [initialize] to initialize.");
+    if (!isInitialized) {
+      debugPrint(
+          "It has not been initialized. First, execute [initialize] to initialize.");
+      return null;
+    }
     return findById(productId);
   }
 
@@ -405,9 +418,12 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
   ///
   /// [productId]: Product ID to check.
   bool enabled(String productId) {
+    if (!isInitialized) {
+      debugPrint(
+          "It has not been initialized. First, execute [initialize] to initialize.");
+      return false;
+    }
     assert(productId.isNotEmpty, "The products id is empty.");
-    assert(isInitialized,
-        "It has not been initialized. First, execute [initialize] to initialize.");
     final product = findById(productId);
     if (product == null) {
       throw Exception("The product is not found.");
@@ -538,6 +554,6 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
       throw Exception(
           "Response is empty: ${response.request?.url ?? ""} ${response.statusCode} ${response.body}");
     }
-    return androidRefreshToken = map.get<String>("refresh_token").def("");
+    return androidRefreshToken = map.get("refresh_token", "");
   }
 }
