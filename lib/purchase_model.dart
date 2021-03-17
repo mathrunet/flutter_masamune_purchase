@@ -5,6 +5,8 @@ final purchaseModelProvider = ModelProvider((_) => PurchaseModel());
 class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
   PurchaseModel() : super([]);
 
+  Completer<void>? _purchaseCompleter;
+
   @override
   bool get notifyOnChangeValue => false;
 
@@ -121,7 +123,7 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
                     "Purchase completed with error: ${purchase.productID}");
               } else if (purchase.status == PurchaseStatus.purchased) {
                 if (_onVerify != null &&
-                    await _onVerify!(purchase, product, this)) {
+                    await _onVerify!.call(purchase, product, this)) {
                   switch (product.type) {
                     case ProductType.consumable:
                       await _onDeliver?.call(purchase, product, this);
@@ -151,17 +153,28 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
               done = true;
             }
           }
-          await _checkEnabledProcess();
           if (done) {
-            streamController.sink.add(value);
+            if (_purchaseCompleter != null &&
+                !_purchaseCompleter!.isCompleted) {
+              _purchaseCompleter!.complete();
+            }
             notifyListeners();
           }
         } catch (e) {
+          if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+            _purchaseCompleter!.completeError(e);
+          }
           rethrow;
         }
       }, onDone: () {
+        if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+          _purchaseCompleter!.complete();
+        }
         dispose();
       }, onError: (error) {
+        if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+          _purchaseCompleter!.completeError(error);
+        }
         throw Exception(error.toString());
       });
       await _onCheckSubscription?.call(this);
@@ -176,7 +189,8 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
           }
         }
       }
-      await _checkEnabledProcess();
+      _listenEnabledProcess("");
+      Config.onUserStateChanged.addListener(_listenEnabledProcess);
       _isInitialized = true;
     } catch (e) {
       rethrow;
@@ -216,7 +230,7 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
             product.type == ProductType.consumable ||
             product.isRestoreTransaction == null ||
             (subscribeOptions.purchaseIDKey.isNotEmpty &&
-                !await product.isRestoreTransaction!(
+                !await product.isRestoreTransaction!.call(
                   purchase,
                   (document) => _subscriptionCheckerOnPurchase(
                       purchase.purchaseID!, document),
@@ -226,7 +240,7 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
         debugPrint(
             "Restore transaction: ${purchase.productID}/${purchase.purchaseID}");
         if (_onVerify != null &&
-            !await _onVerify!(purchase, product, this).timeout(timeout)) {
+            !await _onVerify!.call(purchase, product, this).timeout(timeout)) {
           continue;
         }
         switch (product.type) {
@@ -243,8 +257,6 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
         debugPrint("Restored transaction: ${purchase.productID}");
         _isRestored = true;
       }
-      await _checkEnabledProcess();
-      streamController.sink.add(value);
       notifyListeners();
     } catch (e) {
       rethrow;
@@ -292,7 +304,6 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
         debugPrint(
             "Consumed transaction: ${purchase.productID}/${purchase.purchaseID}");
       }
-      streamController.sink.add(value);
       notifyListeners();
     } catch (e) {
       rethrow;
@@ -342,6 +353,7 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
         applicationUserName: applicationUserName,
         sandboxTesting: sandboxTesting,
       );
+      _purchaseCompleter = Completer<void>();
       if (product.type == ProductType.consumable) {
         await connection
             .buyConsumable(
@@ -353,29 +365,35 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
             .buyNonConsumable(purchaseParam: purchaseParam)
             .timeout(timeout);
       }
+      await _purchaseCompleter!.future;
     } catch (e) {
+      if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+        _purchaseCompleter!.complete();
+      }
       rethrow;
     }
   }
 
-  Future<void> _checkEnabledProcess() async {
+  void _listenEnabledProcess(String userId) {
     try {
-      if (value.isEmpty) {
-        return;
-      }
       for (final product in value) {
-        if (product.isEnabled == null) {
+        product._enabled = false;
+        if (product.isEnabledListener == null) {
           continue;
         }
-        if (!await product.isEnabled!(
+        product._enabledStreamSubscription?.cancel();
+        final stream = product.isEnabledListener!.call(
           product,
           subscribeOptions,
           (document) =>
               _subscriptionCheckerOnCheckingEnabled(product.id, document),
-        )) {
+        );
+        if (stream == null) {
           continue;
         }
-        product._enabled = true;
+        product._enabledStreamSubscription = stream.listen((event) {
+          product._enabled = event;
+        });
       }
     } catch (e) {
       rethrow;
@@ -435,6 +453,8 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
   void dispose() {
     super.dispose();
     _purchaseUpdateStreamSubscription?.cancel();
+    Config.onUserStateChanged.removeListener(_listenEnabledProcess);
+    value.forEach((element) => element._enabledStreamSubscription?.cancel());
   }
 
   late final Future<bool> Function(PurchaseDetails purchase,
@@ -484,7 +504,7 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
   ///
   /// [productId]: Product Id.
   PurchaseProduct? findById(String productId) {
-    assert(productId.isEmpty, "ID is empty.");
+    assert(productId.isNotEmpty, "ID is empty.");
     return value.firstWhereOrNull((product) => product.id == productId);
   }
 

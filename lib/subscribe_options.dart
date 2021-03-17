@@ -19,8 +19,8 @@ class SubscribeOptions {
   /// [existOrderId]: Callback that returns True if the order id exists.
   const SubscribeOptions({
     this.data = const [],
-    this.task,
-    this.existOrderId,
+    // this.task,
+    // this.existOrderId,
     this.userIDKey = "user",
     this.expiryDateKey = "expiredTime",
     this.renewDuration = const Duration(hours: 2),
@@ -36,10 +36,10 @@ class SubscribeOptions {
   /// Collection that stores log data for subscriptions.
   final List<Map<String, dynamic>> data;
 
-  /// Asynchronous data for the collection that contains the subscription log data.
-  final Future<List<Map<String, dynamic>>>? task;
+  // /// Asynchronous data for the collection that contains the subscription log data.
+  // final Future<List<Map<String, dynamic>>>? task;
 
-  /// Expiration date key.
+  // /// Expiration date key.
   final String expiryDateKey;
 
   /// The time to start the update.
@@ -67,7 +67,7 @@ class SubscribeOptions {
   final String purchaseIDKey;
 
   /// Callback that returns True if the order id exists.
-  final Future<bool> Function(String orderId)? existOrderId;
+  // final Future<bool> Function(String orderId)? existOrderId;
 
   /// Expiration key.
   final String expiredKey;

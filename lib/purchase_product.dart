@@ -26,7 +26,7 @@ class PurchaseProduct {
     this.type = ProductType.consumable,
     this.value = 0,
     this.targetPath,
-    this.isEnabled,
+    this.isEnabledListener,
     this.isRestoreTransaction,
     this.onDeliver,
   }) : assert(id.isNotEmpty, "The id is empty.");
@@ -60,14 +60,14 @@ class PurchaseProduct {
   /// If true, billing is enabled.
   ///
   /// [subscriptionChecker] stores the callback that checks by passing the document for subscription.
-  final Future<bool> Function(
+  final Stream<bool>? Function(
           PurchaseProduct product,
           SubscribeOptions subscribeOptions,
           bool Function(Map<String, dynamic> document) subscriptionChecker)?
-      isEnabled;
+      isEnabledListener;
 
   /// Callback for delivering billing items.
-  final Future Function(PurchaseDetails purchase, PurchaseProduct product,
+  final Future<void> Function(PurchaseDetails purchase, PurchaseProduct product,
       PurchaseModel core)? onDeliver;
 
   /// Check out if non-consumption items and subscriptions are valid.
@@ -76,6 +76,8 @@ class PurchaseProduct {
   bool get enabled => type == ProductType.consumable || _enabled;
   // ignore: prefer_final_fields
   bool _enabled = false;
+
+  StreamSubscription? _enabledStreamSubscription;
 
   /// Product Id.
   String get productId => _productDetails?.id ?? id;
