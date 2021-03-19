@@ -110,47 +110,55 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
         try {
           var done = false;
           for (final purchase in purchaseDetailsList) {
-            final product = findByPurchase(purchase);
-            if (product == null) {
-              throw Exception("Product not found.");
-            }
-            if (purchase.status != PurchaseStatus.pending) {
-              if (purchase.status == PurchaseStatus.error) {
+            try {
+              final product = findByPurchase(purchase);
+              if (product == null) {
+                throw Exception("Product not found.");
+              }
+              if (purchase.status != PurchaseStatus.pending) {
+                if (purchase.status == PurchaseStatus.error) {
+                  if (purchase.pendingCompletePurchase) {
+                    await connection.completePurchase(purchase);
+                  }
+                  throw Exception(
+                      "Purchase completed with error: ${purchase.productID}");
+                } else if (purchase.status == PurchaseStatus.purchased) {
+                  if (_onVerify != null &&
+                      await _onVerify!.call(purchase, product, this)) {
+                    switch (product.type) {
+                      case ProductType.consumable:
+                        await _onDeliver?.call(purchase, product, this);
+                        break;
+                      case ProductType.nonConsumable:
+                        await _onUnlock?.call(purchase, product, this);
+                        break;
+                      case ProductType.subscription:
+                        await _onSubscribe?.call(purchase, product, this);
+                        break;
+                    }
+                  } else {
+                    throw Exception(
+                        "There is no method for purchase. Set up a method for purchasing.");
+                  }
+                }
+                if (Config.isAndroid) {
+                  if (!_autoConsumeOnAndroid &&
+                      product.type == ProductType.consumable) {
+                    await connection.consumePurchase(purchase);
+                  }
+                }
                 if (purchase.pendingCompletePurchase) {
+                  debugPrint("Purchase completed: ${purchase.productID}");
                   await connection.completePurchase(purchase);
                 }
-                throw Exception(
-                    "Purchase completed with error: ${purchase.productID}");
-              } else if (purchase.status == PurchaseStatus.purchased) {
-                if (_onVerify != null &&
-                    await _onVerify!.call(purchase, product, this)) {
-                  switch (product.type) {
-                    case ProductType.consumable:
-                      await _onDeliver?.call(purchase, product, this);
-                      break;
-                    case ProductType.nonConsumable:
-                      await _onUnlock?.call(purchase, product, this);
-                      break;
-                    case ProductType.subscription:
-                      await _onSubscribe?.call(purchase, product, this);
-                      break;
-                  }
-                } else {
-                  throw Exception(
-                      "There is no method for purchase. Set up a method for purchasing.");
-                }
+                done = true;
               }
-              if (Config.isAndroid) {
-                if (!_autoConsumeOnAndroid &&
-                    product.type == ProductType.consumable) {
-                  await connection.consumePurchase(purchase);
-                }
-              }
+            } catch (e) {
               if (purchase.pendingCompletePurchase) {
                 debugPrint("Purchase completed: ${purchase.productID}");
                 await connection.completePurchase(purchase);
               }
-              done = true;
+              rethrow;
             }
           }
           if (done) {
@@ -221,10 +229,11 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
         throw Exception(
             "Failed to load past purchases: ${purchaseResponse.error?.message}");
       }
-      for (final purchase in purchaseResponse.pastPurchases) {
+      await Future.forEach<PurchaseDetails>(purchaseResponse.pastPurchases,
+          (purchase) async {
         final product = findByPurchase(purchase);
         if (product == null || purchase.purchaseID.isEmpty) {
-          continue;
+          return;
         }
         if (purchase.status == PurchaseStatus.pending ||
             product.type == ProductType.consumable ||
@@ -235,13 +244,13 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
                   (document) => _subscriptionCheckerOnPurchase(
                       purchase.purchaseID!, document),
                 ))) {
-          continue;
+          return;
         }
         debugPrint(
             "Restore transaction: ${purchase.productID}/${purchase.purchaseID}");
         if (_onVerify != null &&
             !await _onVerify!.call(purchase, product, this).timeout(timeout)) {
-          continue;
+          return;
         }
         switch (product.type) {
           case ProductType.consumable:
@@ -255,8 +264,8 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
             break;
         }
         debugPrint("Restored transaction: ${purchase.productID}");
-        _isRestored = true;
-      }
+      });
+      _isRestored = true;
       notifyListeners();
     } catch (e) {
       rethrow;
