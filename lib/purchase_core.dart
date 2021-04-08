@@ -125,6 +125,12 @@ class PurchaseCore {
   /// [productId]: Product ID to check.
   static bool enabled(String productId) => _purchase.enabled(productId);
 
+  static Stream<bool> enabledStream(String productId) =>
+      _purchase.enabledStream(productId);
+
+  static StreamProvider<bool> enabledStreamProvider(String productId) =>
+      _purchase.enabledStreamProvider(productId);
+
   /// Run in the [main] method before executing with [initialize].
   static void enablePendingPurchases() {
     InAppPurchaseConnection.enablePendingPurchases();

@@ -77,7 +77,8 @@ class PurchaseProduct {
   // ignore: prefer_final_fields
   bool _enabled = false;
 
-  StreamSubscription? _enabledStreamSubscription;
+  // ignore: cancel_subscriptions
+  StreamSubscription<bool>? _enabledStreamSubscription;
 
   /// Product Id.
   String get productId => _productDetails?.id ?? id;
