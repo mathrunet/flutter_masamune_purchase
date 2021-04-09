@@ -60,7 +60,7 @@ class PurchaseProduct {
   /// If true, billing is enabled.
   ///
   /// [subscriptionChecker] stores the callback that checks by passing the document for subscription.
-  final Stream<bool>? Function(
+  final ValueNotifier<bool>? Function(
           PurchaseProduct product,
           SubscribeOptions subscribeOptions,
           bool Function(Map<String, dynamic> document) subscriptionChecker)?
@@ -73,12 +73,12 @@ class PurchaseProduct {
   /// Check out if non-consumption items and subscriptions are valid.
   ///
   /// If true, billing is enabled.
-  bool get enabled => type == ProductType.consumable || _enabled;
-  // ignore: prefer_final_fields
-  bool _enabled = false;
+  bool get enabled =>
+      type == ProductType.consumable || (_enabledValueNotifier?.value ?? false);
 
   // ignore: cancel_subscriptions
-  StreamSubscription<bool>? _enabledStreamSubscription;
+  ValueNotifier<bool>? _enabledValueNotifier;
+  ChangeNotifierProvider<ValueNotifier<bool>>? _enabledValueNotifierProvider;
 
   /// Product Id.
   String get productId => _productDetails?.id ?? id;

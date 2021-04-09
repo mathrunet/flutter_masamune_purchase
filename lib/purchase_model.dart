@@ -7,14 +7,12 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
 
   Completer<void>? _purchaseCompleter;
 
-  final Map<String, Stream<bool>> _enabledStream = {};
-
-  final Map<String, StreamProvider<bool>> _enableStreamProvider = {};
-  static final StreamProvider<bool> _emptyStreamProvider =
-      StreamProvider((_) => const Stream<bool>.empty());
-
   @override
   bool get notifyOnChangeValue => false;
+
+  static final ChangeNotifierProvider<ValueNotifier<bool>>
+      _emptyNotifierProvider =
+      ChangeNotifierProvider((_) => ValueNotifier<bool>(false));
 
   /// Class for managing billing process.
   ///
@@ -391,28 +389,22 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
 
   void _listenEnabledProcess(String userId) {
     try {
-      _enabledStream.clear();
-      _enableStreamProvider.clear();
       for (final product in value) {
-        product._enabled = false;
         if (product.isEnabledListener == null) {
           continue;
         }
-        product._enabledStreamSubscription?.cancel();
-        final stream = product.isEnabledListener!.call(
+        final notifier = product.isEnabledListener!.call(
           product,
           subscribeOptions,
           (document) =>
               _subscriptionCheckerOnCheckingEnabled(product.id, document),
         );
-        if (stream == null) {
+        if (notifier == null) {
           continue;
         }
-        _enabledStream[product.id] = stream;
-        _enableStreamProvider[product.id] = StreamProvider<bool>((_) => stream);
-        product._enabledStreamSubscription = stream.listen((event) {
-          product._enabled = event;
-        });
+        product._enabledValueNotifier = notifier;
+        product._enabledValueNotifierProvider =
+            ChangeNotifierProvider<ValueNotifier<bool>>((_) => notifier);
       }
     } catch (e) {
       rethrow;
@@ -468,30 +460,19 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
     return product.enabled;
   }
 
-  Stream<bool> enabledStream(String productId) {
+  ChangeNotifierProvider<ValueNotifier<bool>> enabledNotifierProvider(
+      String productId) {
     if (!isInitialized) {
       debugPrint(
           "It has not been initialized. First, execute [initialize] to initialize.");
-      return const Stream<bool>.empty();
+      return _emptyNotifierProvider;
     }
     assert(productId.isNotEmpty, "The products id is empty.");
-    if (!_enabledStream.containsKey(productId)) {
+    final product = findById(productId);
+    if (product == null) {
       throw Exception("The product is not found.");
     }
-    return _enabledStream[productId] ?? const Stream<bool>.empty();
-  }
-
-  StreamProvider<bool> enabledStreamProvider(String productId) {
-    if (!isInitialized) {
-      debugPrint(
-          "It has not been initialized. First, execute [initialize] to initialize.");
-      return _emptyStreamProvider;
-    }
-    assert(productId.isNotEmpty, "The products id is empty.");
-    if (!_enableStreamProvider.containsKey(productId)) {
-      throw Exception("The product is not found.");
-    }
-    return _enableStreamProvider[productId] ?? _emptyStreamProvider;
+    return product._enabledValueNotifierProvider ?? _emptyNotifierProvider;
   }
 
   @override
@@ -499,7 +480,6 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
     super.dispose();
     _purchaseUpdateStreamSubscription?.cancel();
     Config.onUserStateChanged.removeListener(_listenEnabledProcess);
-    value.forEach((element) => element._enabledStreamSubscription?.cancel());
   }
 
   late final Future<bool> Function(PurchaseDetails purchase,
