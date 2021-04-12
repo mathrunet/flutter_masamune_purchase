@@ -26,6 +26,7 @@ class PurchaseProduct {
     this.type = ProductType.consumable,
     this.value = 0,
     this.targetPath,
+    this.subscriptionData,
     this.isEnabledListener,
     this.isRestoreTransaction,
     this.onDeliver,
@@ -69,6 +70,10 @@ class PurchaseProduct {
   /// Callback for delivering billing items.
   final Future<void> Function(PurchaseDetails purchase, PurchaseProduct product,
       PurchaseModel core)? onDeliver;
+
+  /// Get the data to be added at the time of subscription.
+  final Future<Map<String, dynamic>?> Function(
+      PurchaseDetails purchase, PurchaseModel core)? subscriptionData;
 
   /// Check out if non-consumption items and subscriptions are valid.
   ///
