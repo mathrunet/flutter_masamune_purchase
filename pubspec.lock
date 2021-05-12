@@ -345,13 +345,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.8.1+4"
-  masamune_test:
-    dependency: "direct dev"
-    description:
-      name: masamune_test
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.5.0"
   matcher:
     dependency: transitive
     description:
@@ -553,13 +546,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.8.0"
-  sprintf:
-    dependency: transitive
-    description:
-      name: sprintf
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "4.1.0"
   sqflite:
     dependency: transitive
     description:
