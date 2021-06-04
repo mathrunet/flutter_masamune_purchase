@@ -11,7 +11,7 @@ part of masamune_purchase;
 //   /// [purchase]: PurchaseDetails.
 //   /// [product]: The purchased product.
 //   /// [core]: Purchase Core instance.
-//   static Future<Map<String, dynamic>?> getSubscribedInfo(
+//   static Future<DynamicMap?> getSubscribedInfo(
 //       PurchaseDetails purchase,
 //       PurchaseProduct product,
 //       PurchaseCore core) async {
@@ -178,7 +178,7 @@ part of masamune_purchase;
 //         return null;
 //       }
 //       final latestReceiptInfo =
-//           map.get<List<Map<String, dynamic>>>("latest_receipt_info");
+//           map.get<List<DynamicMap>>("latest_receipt_info");
 //       if (latestReceiptInfo.isEmpty) {
 //         return null;
 //       }
@@ -202,7 +202,7 @@ part of masamune_purchase;
 //           !map.containsKey("receipt")) {
 //         return null;
 //       }
-//       final reciept = map.get<Map<String, dynamic>>("receipt");
+//       final reciept = map.get<DynamicMap>("receipt");
 //       if (!reciept.containsKey("bundle_id")) {
 //         return null;
 //       }
@@ -261,7 +261,7 @@ part of masamune_purchase;
 //     if (core.subscribeOptions.task != null) {
 //       data = await core.subscribeOptions.task ?? const [];
 //     }
-//     final updated = <Map<String, dynamic>>[];
+//     final updated = <DynamicMap>[];
 //     for (final doc in data) {
 //       if (!doc.containsKey(core.subscribeOptions.expiryDateKey) ||
 //           !doc.containsKey(core.subscribeOptions.tokenKey) ||
@@ -381,7 +381,7 @@ part of masamune_purchase;
 //                 "exclude-old-transactions": true
 //               }));
 //           if (response.statusCode != 200) return null;
-//           Map<String, dynamic> map = Json.decodeAsMap(response.body);
+//           DynamicMap map = Json.decodeAsMap(response.body);
 //           if (map == null) return null;
 //           int status = map["status"];
 //           if (status == 21007 || status == 21008) {
@@ -488,7 +488,7 @@ part of masamune_purchase;
 //         "refresh_token": core.androidRefreshToken
 //       });
 //       if (response.statusCode != 200) return false;
-//       Map<String, dynamic> map = Json.decodeAsMap(response.body);
+//       DynamicMap map = Json.decodeAsMap(response.body);
 //       if (map == null) return false;
 //       String accessToken = map["access_token"];
 //       if (accessToken.isEmpty) return false;
@@ -542,7 +542,7 @@ part of masamune_purchase;
 //             "exclude-old-transactions": true
 //           }));
 //       if (response.statusCode != 200) return false;
-//       Map<String, dynamic> map = Json.decodeAsMap(response.body);
+//       DynamicMap map = Json.decodeAsMap(response.body);
 //       if (map == null) return false;
 //       int status = map["status"];
 //       if (status == 21007 || status == 21008) {

@@ -411,8 +411,7 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
     }
   }
 
-  bool _subscriptionCheckerOnPurchase(
-      String purchaseId, Map<String, dynamic> data) {
+  bool _subscriptionCheckerOnPurchase(String purchaseId, DynamicMap data) {
     if (subscribeOptions.purchaseIDKey.isEmpty) {
       return false;
     }
@@ -420,7 +419,7 @@ class PurchaseModel extends ValueModel<List<PurchaseProduct>> {
   }
 
   bool _subscriptionCheckerOnCheckingEnabled(
-      String productId, Map<String, dynamic> data) {
+      String productId, DynamicMap data) {
     if (subscribeOptions.productIDKey.isEmpty ||
         subscribeOptions.expiredKey.isEmpty) {
       return false;

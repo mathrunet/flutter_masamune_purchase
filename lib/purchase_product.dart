@@ -53,7 +53,7 @@ class PurchaseProduct {
   ///
   /// [subscriptionChecker] stores the callback that checks by passing the document for subscription.
   final Future<bool> Function(PurchaseDetails purchase,
-          bool Function(Map<String, dynamic> document) subscriptionChecker)?
+          bool Function(DynamicMap document) subscriptionChecker)?
       isRestoreTransaction;
 
   /// Check out if non-consumption items and subscriptions are valid.
@@ -64,7 +64,7 @@ class PurchaseProduct {
   final ValueNotifier<bool>? Function(
           PurchaseProduct product,
           SubscribeOptions subscribeOptions,
-          bool Function(Map<String, dynamic> document) subscriptionChecker)?
+          bool Function(DynamicMap document) subscriptionChecker)?
       isEnabledListener;
 
   /// Callback for delivering billing items.
@@ -72,7 +72,7 @@ class PurchaseProduct {
       PurchaseModel core)? onDeliver;
 
   /// Get the data to be added at the time of subscription.
-  final Future<Map<String, dynamic>?> Function(
+  final Future<DynamicMap?> Function(
       PurchaseDetails purchase, PurchaseModel core)? subscriptionData;
 
   /// Check out if non-consumption items and subscriptions are valid.

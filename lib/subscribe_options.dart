@@ -34,10 +34,10 @@ class SubscribeOptions {
   });
 
   /// Collection that stores log data for subscriptions.
-  final List<Map<String, dynamic>> data;
+  final List<DynamicMap> data;
 
   // /// Asynchronous data for the collection that contains the subscription log data.
-  // final Future<List<Map<String, dynamic>>>? task;
+  // final Future<List<DynamicMap>>? task;
 
   // /// Expiration date key.
   final String expiryDateKey;
